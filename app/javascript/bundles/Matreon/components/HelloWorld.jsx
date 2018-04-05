@@ -24,9 +24,9 @@ export default class HelloWorld extends React.Component {
   render() {
     return (
       <div>
-        <h3>
+        <h1>
           Hello, {this.state.name}!
-        </h3>
+        </h1>
         <hr />
         <form >
           <label htmlFor="name">
