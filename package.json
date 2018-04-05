@@ -10,6 +10,11 @@
     "react-on-rails": "^10.1.3"
   },
   "devDependencies": {
-    "webpack-dev-server": "2.11.2"
-  }
+    "webpack-dev-server": "2.11.2",
+    "caniuse-lite" : "^1.0.30000823",
+    "babel-runtime" : ">= 6",
+    "js-yaml": "3.0.0",
+    "webpack": "^3.0.0"
+  },
+  "engines" : { "node" : "~8.9.4" }
 }
