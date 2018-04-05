@@ -1,0 +1,1 @@
+ReactOnRails::TestHelper.configure_rspec_to_compile_assets(config)

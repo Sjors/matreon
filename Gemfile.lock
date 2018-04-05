@@ -53,13 +53,6 @@ GEM
       xpath (>= 2.0, < 4.0)
     childprocess (0.9.0)
       ffi (~> 1.0, >= 1.0.11)
-    coffee-rails (4.2.2)
-      coffee-script (>= 2.2.0)
-      railties (>= 4.0.0)
-    coffee-script (2.4.1)
-      coffee-script-source
-      execjs
-    coffee-script-source (1.12.2)
     concurrent-ruby (1.0.5)
     connection_pool (2.2.1)
     crass (1.0.3)
@@ -73,6 +66,7 @@ GEM
     jbuilder (2.7.0)
       activesupport (>= 4.2.0)
       multi_json (>= 1.2)
+    libv8 (6.3.292.48.1)
     listen (3.1.5)
       rb-fsevent (~> 0.9, >= 0.9.4)
       rb-inotify (~> 0.9, >= 0.9.7)
@@ -85,6 +79,8 @@ GEM
     method_source (0.9.0)
     mini_mime (1.0.0)
     mini_portile2 (2.3.0)
+    mini_racer (0.1.15)
+      libv8 (~> 6.3)
     minitest (5.11.3)
     multi_json (1.13.1)
     nio4r (2.3.0)
@@ -192,9 +188,9 @@ PLATFORMS
 DEPENDENCIES
   byebug
   capybara (~> 2.13)
-  coffee-rails (~> 4.2)
   jbuilder (~> 2.5)
   listen (>= 3.0.5, < 3.2)
+  mini_racer
   puma (~> 3.7)
   rails (~> 5.1.6)
   react_on_rails (= 10.1.3)
