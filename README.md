@@ -1,24 +1,26 @@
-# README
+# Matreon
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+Current status: vaporware!
 
-Things you may want to cover:
+## Prerequisites
 
-* Ruby version
+You need to run [c-lightning](https://github.com/ElementsProject/lightning) and [Lightning Charge](https://github.com/ElementsProject/lightning-charge) somewhere.
 
-* System dependencies
+## Deploy to Heroku
 
-* Configuration
+Assuming you have an account, clone the repository.
 
-* Database creation
+```
+heroku apps:create
+heroku config:add LIGHTNING_CHARGE_URL=https://charge.example.com
+git push heroku
+heroku run db:migrate
+```
 
-* Database initialization
+It's free to use your own domain with Heroku. SSL for your own domain is also easy to setup, but not free.
 
-* How to run the test suite
+## Development
 
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
+```sh
+bundle install --without production
+```
