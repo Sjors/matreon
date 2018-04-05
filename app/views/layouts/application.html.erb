@@ -25,21 +25,26 @@
             <li class="nav-item active">
               <a class="nav-link" href="#">Matrons <span class="sr-only">(current)</span></a>
             </li>
-            <li class="nav-item">
-              <a class="nav-link" href="#">Invoices</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="#">Settings</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/users/sign_in">Login</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/users/sign_out" data-method="delete">Logout</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/users/sign_up">Register</a>
-            </li>
+            <% if current_user %>
+              <li class="nav-item">
+                <a class="nav-link" href="#">My Contribution</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#">Invoices</a>
+              </li>
+            <% end %>
+            <% if current_user %>
+              <li class="nav-item">
+                <a class="nav-link" href="/users/sign_out" data-method="delete">Logout</a>
+              </li>
+            <% else %>
+              <li class="nav-item">
+                <a class="nav-link" href="/users/sign_in">Login</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/users/sign_up">Register</a>
+              </li>
+            <% end %>
           </ul>
         </div>
       </nav>
