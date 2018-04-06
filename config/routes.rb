@@ -1,6 +1,7 @@
 Rails.application.routes.draw do
   scope format: true, constraints: { format: /json/ } do
     resource :contribution
+    resources :invoices
   end
 
   # Let react-router handle this:

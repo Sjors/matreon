@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20180406081155) do
+ActiveRecord::Schema.define(version: 20180406183744) do
 
   create_table "contributions", force: :cascade do |t|
     t.integer "user_id"
@@ -18,6 +18,18 @@ ActiveRecord::Schema.define(version: 20180406081155) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["user_id"], name: "index_contributions_on_user_id"
+  end
+
+  create_table "invoices", force: :cascade do |t|
+    t.integer "user_id"
+    t.bigint "amount"
+    t.datetime "paid_at"
+    t.string "charge_invoice_id"
+    t.datetime "polled_at"
+    t.string "status"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_invoices_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|

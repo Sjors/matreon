@@ -8,6 +8,7 @@ class User < ApplicationRecord
          :recoverable, :rememberable, :trackable, :validatable, :confirmable
 
   has_one :contribution
+  has_many :invoices
 
   def initialize_contribution
     self.build_contribution(amount: 0)
