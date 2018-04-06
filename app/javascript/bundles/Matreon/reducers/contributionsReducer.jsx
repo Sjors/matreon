@@ -5,11 +5,12 @@ import Immutable from 'immutable';
 import * as actionTypes from '../constants/contributionsConstants';
 
 export const $$initialState = Immutable.fromJS({
-  $$contribution: [],
+  $$contribution: {},
   fetchContributionError: null,
   submitContributionError: null,
   isFetching: false,
-  isSaving: false
+  isSaving: false,
+  isDirty: false
 });
 
 export default function contributionReducer($$state = $$initialState, action = null) {
@@ -23,6 +24,13 @@ export default function contributionReducer($$state = $$initialState, action = n
         $$contribution: contribution,
         fetchContributionError: null,
         isFetching: false,
+      });
+    }
+
+    case actionTypes.UPDATE_CONTRIBUTION: {
+      return $$state.merge({
+        $$contribution: contribution,
+        isDirty: true // Naive approach
       });
     }
 
@@ -43,6 +51,7 @@ export default function contributionReducer($$state = $$initialState, action = n
           .merge({
             submitContributionError: null,
             isSaving: false,
+            isDirty: false
           })
       ));
     }
