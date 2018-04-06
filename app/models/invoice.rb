@@ -85,6 +85,7 @@ end
 
     self.charge_invoice_id = generated_invoice["id"]
     self.status = generated_invoice["status"]
+    self.polled_at = DateTime.now
   end
 
   def update_lightning_charge_invoice
