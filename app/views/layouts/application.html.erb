@@ -15,5 +15,7 @@
 
   <body>
     <%= yield %>
+    <%= redux_store_hydration_data %>
+    <%= redux_store("contributionsStore", props: {contribution: current_user ? current_user.contribution : nil}.to_json) %>
   </body>
 </html>
