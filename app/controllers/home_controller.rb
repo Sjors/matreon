@@ -2,6 +2,6 @@
 
 class HomeController < ApplicationController
   def index
-    @hello_world_props = { name: "Stranger" }
+    @layout_props = { isLoggedIn: current_user.present? }
   end
 end

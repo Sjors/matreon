@@ -1,4 +1,7 @@
 Rails.application.routes.draw do
+  # Let react-router handle this:
+  get 'contribution', to: 'home#index'
+
   devise_for :users
   get 'home', to: 'home#index'
 
