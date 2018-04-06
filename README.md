@@ -4,6 +4,8 @@ Current status: extremely experimental!
 
 Recurring invoices actually haven't been implemented yet; I still have a month for that :-)
 
+Live instance: [matreon.sprovoost.nl](https://matreon.herokuapp.com/)
+
 ## Prerequisites
 
 You need to run [c-lightning](https://github.com/ElementsProject/lightning) and [Lightning Charge](https://github.com/ElementsProject/lightning-charge) somewhere.
