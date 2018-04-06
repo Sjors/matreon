@@ -65,23 +65,6 @@ export default class Layout extends Component {
               {this.props.children}
           </main>
         </div>
-      // <section>
-      //   <header>
-      //     <ul>
-      //       <li>
-      //         <Link to="/" activeClassName="active">
-      //           Comments (Root URL)
-      //         </Link>
-      //       </li>
-      //       <li>
-      //         <Link to="/contribution" activeClassName="active">
-      //           Contribution
-      //         </Link>
-      //       </li>
-      //     </ul>
-      //   </header>
-      //   {this.props.children}
-      // </section>
     );
   }
 }

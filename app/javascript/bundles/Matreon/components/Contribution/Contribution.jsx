@@ -27,17 +27,21 @@ function stateToProps(state) {
 
 class Contribution extends React.Component {
   static propTypes = {
-    contribution: PropTypes.object.isRequired,
+    contribution: PropTypes.object, // Absent if not logged in
     isSaving: PropTypes.bool.isRequired,
     isDirty: PropTypes.bool.isRequired
   };
 
   constructor(props, context) {
     super(props, context);
+
+    // TODO: do this properly
+    if (!window.layoutProps.isLoggedIn) {
+      window.location='/users/sign_in';
+    }
   }
 
   updateAmount(e) {
-    console.log(this.props.contribution)
     this.actions
       .updateContribution({amount: parseInt(e.target.value)})
   }

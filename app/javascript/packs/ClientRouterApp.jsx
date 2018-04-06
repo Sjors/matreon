@@ -9,7 +9,7 @@ import PropTypes from 'prop-types'
 export default (_props, _railsContext) => {
   const store = ReactOnRails.getStore('contributionsStore');
 
-  // Don't know how to pass these props along:
+  // TOOD: put this in Redux store
   window.layoutProps = _props.layout;
 
   return (
