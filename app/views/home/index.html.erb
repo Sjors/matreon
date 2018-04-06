@@ -1,1 +1,4 @@
 <%= react_component("ClientRouterApp", props: {layout: @layout_props}) %>
+<%= redux_store_hydration_data %>
+<%= redux_store("contributionsStore", props: @contribution_props.to_json) %>
+<%= redux_store("invoicesStore", props: @invoices_props.to_json) %>

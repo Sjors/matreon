@@ -63,7 +63,7 @@ export default function contributionReducer($$state = $$initialState, action = n
       });
     }
 
-    case actionTypes.SET_IS_FETCHING: {
+    case actionTypes.SET_IS_FETCHING_CONTRIBUTION: {
       return $$state.merge({
         isFetching: true,
       });

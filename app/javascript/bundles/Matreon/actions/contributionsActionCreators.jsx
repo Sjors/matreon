@@ -3,7 +3,7 @@ import * as actionTypes from '../constants/contributionsConstants';
 
 export function setIsFetching() {
   return {
-    type: actionTypes.SET_IS_FETCHING,
+    type: actionTypes.SET_IS_FETCHING_CONTRIBUTION,
   };
 }
 

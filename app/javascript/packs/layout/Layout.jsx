@@ -39,8 +39,10 @@ export default class Layout extends Component {
                 }
                 { this.state.isLoggedIn &&
                   <li className="nav-item">
-                    <a className="nav-link" href="#">Invoices</a>
-                  </li>
+                  <Link to="/invoices" activeClassName="active" className="nav-link">
+                    Invoices
+                  </Link>
+                </li>
                 }
                 { this.state.isLoggedIn &&
                   <li className="nav-item">

@@ -1,6 +1,8 @@
 # Matreon
 
-Current status: vaporware!
+Current status: extremely experimental!
+
+Recurring invoices actually haven't been implemented yet; I still have a month for that :-)
 
 ## Prerequisites
 
