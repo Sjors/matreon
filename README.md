@@ -14,7 +14,7 @@ Clone this repo and:
 
 ```sh
 heroku git:remote -a app-name
-heroku config:add ACTION_MAILER_DEFAULT_URL=https://app-name.herokuapp.com
+heroku config:add HOSTNAME=app-name.herokuapp.com # Must be HTTPS
 heroku config:add LIGHTNING_CHARGE_URL=https://charge.example.com
 heroku config:add FROM_EMAIL='"My Matreon" <you@example.com>'
 git push heroku
