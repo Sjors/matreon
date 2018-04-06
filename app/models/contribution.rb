@@ -7,6 +7,6 @@ class Contribution < ApplicationRecord
 
   def self.active_count
     # TODO: exclude contributors more than 1 month behind in payments
-    return self.where('amount > ?', 1).count
+    return self.where('amount >= ?', 1).count
   end
 end
