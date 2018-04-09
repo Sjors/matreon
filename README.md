@@ -1,4 +1,5 @@
-# Matreon
+# Matreon [![Build Status](https://travis-ci.org/Sjors/matreon.svg?branch=master)](https://travis-ci.org/Sjors/matreon)
+
 
 Current status: extremely experimental!
 
