@@ -40,6 +40,8 @@ group :development, :test do
   gem 'selenium-webdriver'
 
   gem 'rspec-rails', '~> 3.7'
+
+  gem 'coveralls', require: false
 end
 
 group :development do
