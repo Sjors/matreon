@@ -31,7 +31,16 @@ It's free to use your own domain with Heroku. SSL for your own domain is also ea
 
 ## Development
 
-Clone this repo and:
+Install [RVM](https://rvm.io) (Ruby Version Manager) and `rvm install` the right [Ruby version](Gemfile#L1). Install [NVM](https://github.com/creationix/nvm#install-script) (Node Version Manager) and `nvm install` the right NodeJS version, see `{engines: {node: ...}}` in [package.json](package.json).
+
+Clone this repo and create a file `.env` with:
+
+```
+LIGHTNING_CHARGE_URL=...
+LIGHTNING_CHARGE_API_TOKEN=...
+```
+
+Install dependencies, create database and start server:
 
 ```sh
 bundle install --without production
