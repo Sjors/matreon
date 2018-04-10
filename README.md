@@ -5,7 +5,7 @@ Current status: extremely experimental!
 
 Recurring invoices actually haven't been implemented yet; I still have a month for that :-)
 
-Live instance: [matreon.sprovoost.nl](https://matreon.herokuapp.com/)
+Live instance: [matreon.sprovoost.nl](https://matreon.sprovoost.nl/)
 
 ## Prerequisites
 
