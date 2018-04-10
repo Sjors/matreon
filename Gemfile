@@ -17,6 +17,8 @@ gem 'react_on_rails', '10.1.3'
 gem 'puma', '~> 3.11'
 # Use SCSS for stylesheets
 
+gem 'secure_headers', '~> 6.0.0.alpha02'
+
 gem "rack-timeout"
 
 gem 'sass-rails', '~> 5.0'
