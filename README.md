@@ -43,7 +43,10 @@ LIGHTNING_CHARGE_API_TOKEN=...
 Install dependencies, create database and start server:
 
 ```sh
+gem install foreman
 bundle install --without production
 rake db:migrate
-rails s
+foreman start -f Procfile.dev-server
 ```
+
+Install [React Developer Tools](https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi) and [Redux Developer Tools](https://chrome.google.com/webstore/detail/redux-devtools/lmhkpmbekcpmknklioeibfkpmmfibljd) for Chrome.
