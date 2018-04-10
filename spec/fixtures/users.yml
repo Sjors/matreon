@@ -5,3 +5,9 @@ alice:
 
 bob:
   email: "bob@matreon.zz"
+
+carol:
+  email: "carol@matreon.zz"
+
+dave:
+  email: "dave@matreon.zz"

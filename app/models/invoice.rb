@@ -8,6 +8,8 @@ class Invoice < ApplicationRecord
   before_create :create_lightning_charge_invoice
   before_update :update_lightning_charge_invoice
 
+  scope :this_month, -> { where('created_at >= ?', 1.month.ago) }
+
   def as_json(options = nil)
     super({ only: [:id, :amount, :paid_at, :status, :created_at, :polled_at] }.merge(options || {})).merge({url: url})
   end
@@ -29,6 +31,15 @@ class Invoice < ApplicationRecord
     self.update status: invoice["status"], polled_at: DateTime.now, paid_at: invoice["status"] == "paid" ? DateTime.now : nil
     
     return invoice
+  end
+
+  def self.generate!
+    Contribution.non_zero.each do | contribution |
+      contribution.create_or_update_invoice!
+    end
+  end
+
+  def self.email!
   end
 
   private
@@ -66,7 +77,7 @@ class Invoice < ApplicationRecord
     else
       return JSON.parse(response.body)
     end
-end
+  end
 
   def create_lightning_charge_invoice
     uri = invoice_uri()
