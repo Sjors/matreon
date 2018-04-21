@@ -28,7 +28,7 @@ git push heroku
 heroku run db:migrate
 ```
 
-To send out monthly emails, install the `scheduler` addon:
+To send out monthly emails and monitor payments, install the `scheduler` addon:
 
 ```
 heroku addons:create scheduler:standard

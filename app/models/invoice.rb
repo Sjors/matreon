@@ -30,7 +30,7 @@ class Invoice < ApplicationRecord
 
     self.update status: invoice["status"], polled_at: Time.current, paid_at: invoice["status"] == "paid" ? Time.current : nil
     
-    return invoice
+    return true
   end
 
   def self.generate!
@@ -105,4 +105,9 @@ class Invoice < ApplicationRecord
     end
   end
 
+  def self.poll_unpaid!
+    Invoice.where(paid_at: nil, status: 'unpaid').each do |invoice|
+      invoice.poll!
+    end
+  end
 end

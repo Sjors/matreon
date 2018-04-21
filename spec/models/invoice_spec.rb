@@ -26,6 +26,29 @@ RSpec.describe Contribution, :type => :model do
     end
   end
 
+  describe "self.poll_unpaid!" do
+    before do
+    end
+
+    it "should call poll! on unpaid invoice" do
+      expect_any_instance_of(Invoice).to receive(:poll!).and_return true
+
+      invoices(:dave_february).update status: 'unpaid', paid_at: nil
+      Invoice.poll_unpaid!
+    end
+
+    it "should not call poll! on a paid invoice" do
+      expect_any_instance_of(Invoice).not_to receive(:poll!).and_return true
+      Invoice.poll_unpaid!
+    end
+
+    it "should not call poll! on an expired invoice" do
+      expect_any_instance_of(Invoice).not_to receive(:poll!).and_return true
+      invoices(:dave_february).update status: 'expired', paid_at: nil
+      Invoice.poll_unpaid!
+    end
+  end
+
   describe "self.email!" do
     it "should ..."
   end
