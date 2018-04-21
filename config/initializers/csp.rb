@@ -11,7 +11,7 @@ SecureHeaders::Configuration.default do |config|
     }
     # Add "; preload" and submit the site to hstspreload.org for best protection.
     # config.hsts = "max-age=#{1.week.to_i}"
-    config.x_frame_options = "DENY"
+    config.x_frame_options = "SAMEORIGIN"
     config.x_content_type_options = "nosniff"
     config.x_xss_protection = "1; mode=block"
     config.x_download_options = "noopen"
@@ -29,7 +29,8 @@ SecureHeaders::Configuration.default do |config|
       connect_src: connect_src,
       font_src: %w('self'),
       form_action: %w('self'),
-      frame_ancestors: %w('none'),
+      # Allow iframe in dev mode to see email previews (toggle between HTML & text won't work):
+      frame_ancestors: Rails.env.production? ? %w('none') : %w('self'),
       img_src: %w('self'),
       manifest_src: %w('self'),
       media_src: %w('self'),

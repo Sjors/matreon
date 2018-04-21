@@ -39,7 +39,15 @@ class Invoice < ApplicationRecord
     end
   end
 
-  def self.email!
+  def email!
+    InvoiceMailer.with(invoice: self).new_invoice.deliver_now
+    self.update emailed_at: Time.current
+  end
+
+  def self.email_unpaid_once!
+    self.where(status: "unpaid", emailed_at: nil).where.not(charge_invoice_id: nil).each do |invoice|
+      invoice.email!
+    end
   end
 
   private

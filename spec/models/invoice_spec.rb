@@ -7,6 +7,18 @@ RSpec.describe Contribution, :type => :model do
     travel_to Time.zone.local(2018, 02, 15)
   end
 
+  describe "email!" do
+    it "should call the mailer" do
+      expect { invoices(:alice_february).email! }
+        .to change { ActionMailer::Base.deliveries.count }.by(1)
+    end
+
+    it "should mark as emailed" do
+      invoices(:alice_february).email!
+      expect(invoices(:alice_february).emailed_at).not_to be_nil
+    end
+  end
+
   describe "self.generate!" do
     before do
       allow_any_instance_of(Invoice).to receive(:create_lightning_charge_invoice)
@@ -49,7 +61,32 @@ RSpec.describe Contribution, :type => :model do
     end
   end
 
-  describe "self.email!" do
-    it "should ..."
+  describe "self.email_unpaid_once!" do
+    before do
+      invoices(:dave_february).update status: 'unpaid', paid_at: nil
+    end
+
+    it "should call email! on every invoice that's unpaid and unsent" do
+      expect_any_instance_of(Invoice).to receive(:email!).and_return true
+      Invoice.email_unpaid_once!
+    end
+
+    it "should not email about a paid invoice" do
+      invoices(:dave_february).update status: 'paid', paid_at: Time.zone.local(2018, 02, 28)
+      expect_any_instance_of(Invoice).not_to receive(:email!).and_return true
+      Invoice.email_unpaid_once!
+    end
+
+    it "should not email about an invoice twice" do
+      invoices(:dave_february).update emailed_at: Time.zone.local(2018, 02, 28)
+      expect_any_instance_of(Invoice).not_to receive(:email!)
+      Invoice.email_unpaid_once!
+    end
+
+    it "should not email if a Lightning Charge ID is missing" do
+      invoices(:dave_february).update charge_invoice_id: nil
+      expect_any_instance_of(Invoice).not_to receive(:email!)
+      Invoice.email_unpaid_once!
+    end
   end
 end

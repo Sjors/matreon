@@ -8,6 +8,6 @@ namespace :invoices do :env
     Invoice.generate!
 
     # Email invoices
-    Invoice.email!
+    Invoice.email_unpaid_once!
   end
 end
