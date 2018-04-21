@@ -48,6 +48,7 @@ Clone this repo and create a file `.env` with:
 ```
 LIGHTNING_CHARGE_URL=...
 LIGHTNING_CHARGE_API_TOKEN=...
+FROM_EMAIL='"My Matreon" <you@example.com>'
 ```
 
 Install dependencies, create database and start server:
@@ -60,3 +61,5 @@ foreman start -f Procfile.dev-server
 ```
 
 Install [React Developer Tools](https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi) and [Redux Developer Tools](https://chrome.google.com/webstore/detail/redux-devtools/lmhkpmbekcpmknklioeibfkpmmfibljd) for Chrome.
+
+To trigger invoice emails (delivered to `tmp/mails/[address]`), run: `rake invoices:process`
