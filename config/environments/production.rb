@@ -103,4 +103,13 @@ Rails.application.configure do
 
   # Do not dump schema after migrations.
   config.active_record.dump_schema_after_migration = false
+
+  Rails.application.config.middleware.use ExceptionNotification::Rack,
+    :email => {
+      :email_prefix => "[Matreon Exception] ",
+      :sender_address => ENV['FROM_EMAIL'],
+      :exception_recipients => [ENV['BUGS_TO']]
+    }
+
+  ExceptionNotifier::Rake.configure
 end

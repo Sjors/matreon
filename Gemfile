@@ -38,6 +38,10 @@ gem 'devise'
 # Asynchronous processing:
 gem 'sucker_punch', '~> 2.0'
 
+# Email when something breaks
+gem 'exception_notification'
+gem 'exception_notification-rake', '~> 0.3.0'
+
 group :development, :test do
   # Use sqlite3 as the database for Active Record
   gem 'sqlite3'
