@@ -5,10 +5,10 @@ require 'json'
 class Invoice < ApplicationRecord
   belongs_to :user
 
+  default_scope { order(created_at: :desc) }
+
   before_create :create_lightning_charge_invoice
   before_update :update_lightning_charge_invoice
-
-  scope :this_month, -> { where('created_at >= ?', 1.month.ago) }
 
   def as_json(options = nil)
     super({ only: [:id, :amount, :paid_at, :status, :created_at, :polled_at] }.merge(options || {})).merge({url: url})
@@ -28,7 +28,7 @@ class Invoice < ApplicationRecord
 
     invoice = request_and_parse(request, uri)
 
-    self.update status: invoice["status"], polled_at: DateTime.now, paid_at: invoice["status"] == "paid" ? DateTime.now : nil
+    self.update status: invoice["status"], polled_at: Time.current, paid_at: invoice["status"] == "paid" ? Time.current : nil
     
     return invoice
   end
@@ -96,7 +96,7 @@ class Invoice < ApplicationRecord
 
     self.charge_invoice_id = generated_invoice["id"]
     self.status = generated_invoice["status"]
-    self.polled_at = DateTime.now
+    self.polled_at = Time.current
   end
 
   def update_lightning_charge_invoice

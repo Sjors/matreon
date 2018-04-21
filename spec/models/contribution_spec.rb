@@ -4,7 +4,24 @@ RSpec.describe Contribution, :type => :model do
   fixtures :users, :contributions, :invoices
 
   before do
-    travel_to Time.new(2018, 02, 15)
+    travel_to Time.zone.local(2018, 02, 15)
+  end
+
+  describe "creation" do
+    before do
+      allow_any_instance_of(Invoice).to receive(:create_lightning_charge_invoice)
+    end
+  
+    it "should set billing day of month to current day of month" do
+      users(:alice).create_contribution(amount: 1)
+      expect(users(:alice).contribution.billing_day_of_month).to eq(15)
+    end
+
+    it "should not set billing day higher than 28" do
+      travel_to Time.zone.local(2018, 07, 31)
+      users(:alice).create_contribution(amount: 1)
+      expect(users(:alice).contribution.billing_day_of_month).to eq(28)
+    end
   end
 
   describe "self.active_count" do
@@ -40,9 +57,9 @@ RSpec.describe Contribution, :type => :model do
       expect(users(:carol).invoices.first.amount).to eq(2)
     end
 
-    it "should create a new invoice if one month has passed" do
+    it "should create a new invoice on a billing day" do
       contributions(:carol).create_or_update_invoice!
-      users(:carol).invoices.first.update created_at: 35.days.ago
+      travel_to Time.zone.local(2018, 03, 15)
       contributions(:carol).create_or_update_invoice!
       expect(contributions(:carol).user.invoices.count).to eq(2)
     end

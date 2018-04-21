@@ -3,7 +3,9 @@
 carol:
   user: carol
   amount: 1
+  billing_day_of_month: 15
 
 dave:
   user: dave
   amount: 1
+  billing_day_of_month: 15

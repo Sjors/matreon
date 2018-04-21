@@ -4,13 +4,7 @@ RSpec.describe Contribution, :type => :model do
   fixtures :users, :invoices
 
   before do
-    travel_to Time.new(2018, 02, 15)
-  end
-
-  describe "scope :this_month" do
-    it "should only include invoices less than a month old" do
-      expect(Invoice.this_month.length).to eq(1)
-    end
+    travel_to Time.zone.local(2018, 02, 15)
   end
 
   describe "self.generate!" do
@@ -18,10 +12,17 @@ RSpec.describe Contribution, :type => :model do
       allow_any_instance_of(Invoice).to receive(:create_lightning_charge_invoice)
     end
 
-    it "should create an invoice one month after the last" do
+    it "should not create an invoice on non-billing day" do
+      expect(users(:dave).invoices.count).to eq(2) # Fixtures
+      travel_to Time.zone.local(2018, 03, 14)
       Invoice.generate!
-      expect(Invoice.count).to eq(3)
-      expect(Invoice.last.user).to eq(users(:carol))
+      expect(users(:dave).invoices.count).to eq(2)
+    end
+
+    it "should create an invoice on billing day" do
+      travel_to Time.zone.local(2018, 03, 15)
+      Invoice.generate!
+      expect(users(:dave).invoices.count).to eq(3)
     end
   end
 
