@@ -11,6 +11,7 @@ class ContributionsController < ApplicationController
   def update
     @contribution = current_user.contribution
     if @contribution.update(contribution_params)
+      ContributionUpdateInvoicesJob.perform_async(@contribution.id)
       render json: @contribution
     else
       render json: @contribution.errors, status: :unprocessable_entity

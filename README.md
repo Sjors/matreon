@@ -34,7 +34,7 @@ heroku addons:create scheduler:standard
 heroku addons:open scheduler
 ```
 
-Click "Ad a new job", enter `rake invoices:generate_and_send` and press `Save`.
+Click "Ad a new job", enter `rake invoices:process` and press `Save`. Set frequency to hourly to retry in case of failure.
 
 It's free to use your own domain with Heroku. SSL for your own domain is also easy to setup, but not free.
 

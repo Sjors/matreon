@@ -8,10 +8,6 @@ RSpec.describe Contribution, :type => :model do
   end
 
   describe "creation" do
-    before do
-      allow_any_instance_of(Invoice).to receive(:create_lightning_charge_invoice)
-    end
-  
     it "should set billing day of month to current day of month" do
       users(:alice).create_contribution(amount: 1)
       expect(users(:alice).contribution.billing_day_of_month).to eq(15)
@@ -25,10 +21,6 @@ RSpec.describe Contribution, :type => :model do
   end
 
   describe "self.active_count" do
-    before do
-      allow_any_instance_of(Invoice).to receive(:create_lightning_charge_invoice)
-    end
-
     it "should exlude 0 satoshi contributors" do
       expect(Contribution.active_count).to eq(2)
     end
@@ -52,7 +44,8 @@ RSpec.describe Contribution, :type => :model do
 
     it "should replace the invoice if the user increased the amount" do
       contributions(:carol).create_or_update_invoice!
-      contributions(:carol).update(amount: 2) # calls create_or_update_invoice! in before_save
+      contributions(:carol).update(amount: 2)
+      contributions(:carol).create_or_update_invoice!
       expect(users(:carol).invoices.count).to eq(1)
       expect(users(:carol).invoices.first.amount).to eq(2)
     end

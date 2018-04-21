@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe "invoices:generate_and_send" do
+describe "invoices:process" do
   include_context "rake"
 
   it "should call :generate! and :email! on Invoice" do

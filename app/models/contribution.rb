@@ -5,8 +5,6 @@ class Contribution < ApplicationRecord
     self.billing_day_of_month = [Time.current.day, 28].min
   end
 
-  before_save :create_or_update_invoice!
-
   scope :non_zero, -> { where('amount >= ?', 1) }
 
   def as_json(options = nil)
