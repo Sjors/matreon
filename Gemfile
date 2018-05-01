@@ -65,6 +65,10 @@ group :development do
   gem 'spring-watcher-listen', '~> 2.0.0'
   # Use .env
   gem 'dotenv'
+  # Automatically run tests, etc:
+  gem 'guard'
+  gem 'guard-rspec', require: false
+  gem 'terminal-notifier-guard', '~> 1.6.1'
 end
 
 group :production do
