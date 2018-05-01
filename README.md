@@ -60,6 +60,13 @@ rake db:migrate
 foreman start -f Procfile.dev-server
 ```
 
+Use Guard to automatically run tests each time you change something. To trigger
+a system notification on macOS:
+
+```sh
+brew install terminal-notifier
+``` 
+
 Install [React Developer Tools](https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi) and [Redux Developer Tools](https://chrome.google.com/webstore/detail/redux-devtools/lmhkpmbekcpmknklioeibfkpmmfibljd) for Chrome.
 
 To trigger invoice emails (delivered to `tmp/mails/[address]`), run: `rake invoices:process`
