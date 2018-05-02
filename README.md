@@ -3,8 +3,6 @@
 
 Current status: extremely experimental!
 
-Recurring invoices actually haven't been implemented yet; I still have a month for that :-)
-
 Live instance: [matreon.sprovoost.nl](https://matreon.sprovoost.nl/)
 
 ## Prerequisites
@@ -35,7 +33,7 @@ heroku addons:create scheduler:standard
 heroku addons:open scheduler
 ```
 
-Click "Ad a new job", enter `rake invoices:process` and press `Save`. Set frequency to hourly to retry in case of failure.
+Click "Add a new job", enter `rake invoices:process` and press `Save`. Set frequency to hourly to retry in case of failure.
 
 It's free to use your own domain with Heroku. SSL for your own domain is also easy to setup, but not free.
 
@@ -43,7 +41,7 @@ It's free to use your own domain with Heroku. SSL for your own domain is also ea
 
 In order to provide a podcast feed for your supporters, you need to configure
 some channel metadata and provide a URL of an existing podcast RSS feed. Uploading 
-episodes directly isn't supported yet, see #25.
+episodes directly isn't supported yet, see [#25](https://github.com/Sjors/matreon/issues/25).
 
 ```sh
 heroku config:add PODCAST=1
