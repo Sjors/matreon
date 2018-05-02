@@ -2,6 +2,9 @@
 require 'spec_helper'
 ENV['RAILS_ENV'] ||= 'test'
 ENV['FROM_EMAIL'] ||= 'test@matreon.zz'
+ENV['PODCAST'] ||= '1'
+ENV['PODCAST_URL'] ||= 'https://example.com/podcast.rss'
+ENV['PODCAST_TITLE'] ||= 'Sjorsnado Podcast'
 require File.expand_path('../../config/environment', __FILE__)
 # Prevent database truncation if the environment is production
 abort("The Rails environment is running in production mode!") if Rails.env.production?

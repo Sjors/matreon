@@ -3,6 +3,12 @@ Rails.application.routes.draw do
     resource :contribution
     resources :invoices
   end
+  
+  scope format: true, constraints: { format: /rss/ } do
+    scope '/podcast' do
+      get '/' => 'podcast#feed', as: :podcast
+    end 
+  end
 
   # Let react-router handle this:
   get 'contribution', to: 'home#index'

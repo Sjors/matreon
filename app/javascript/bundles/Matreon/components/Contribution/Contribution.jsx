@@ -39,6 +39,10 @@ class Contribution extends React.Component {
     if (!window.layoutProps.isLoggedIn) {
       window.location='/users/sign_in';
     }
+    
+    this.state = {
+      podcastUrl: window.layoutProps.podcastUrl 
+    }
   }
 
   updateAmount(e) {
@@ -90,6 +94,17 @@ class Contribution extends React.Component {
           </Col>
         </FormGroup>
         </Form>
+        { this.state.podcastUrl &&
+          <div>
+          <h3>Podcast</h3>
+          <p>
+            Private podcast URL: <a href={ this.state.podcastUrl }>{ this.state.podcastUrl }</a>
+          </p>
+          <p>
+            Once you've paid each month's invoice, new episodes will appear until the next month. If you stop paying, previous episodes will remain available.   
+          </p>
+          </div>
+        }
       </div>
     );
   }
