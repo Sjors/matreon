@@ -93,7 +93,7 @@ class Invoice < ApplicationRecord
     invoice = {
       msatoshi: amount * 1000,
       description: "Matreon",
-      expiry: 60 * 60 * 24 * 7 # 1 week
+      expiry: 60 * 60 * 24 * 7 # 1 week, TODO: add invoices.expires_at
     }
   
     request = http_request("POST", uri)

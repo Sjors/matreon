@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20180421162802) do
+ActiveRecord::Schema.define(version: 20180502093551) do
 
   create_table "contributions", force: :cascade do |t|
     t.integer "user_id"
@@ -34,6 +34,17 @@ ActiveRecord::Schema.define(version: 20180421162802) do
     t.index ["user_id"], name: "index_invoices_on_user_id"
   end
 
+  create_table "podcasts", force: :cascade do |t|
+    t.string "guid"
+    t.datetime "pub_date"
+    t.string "title"
+    t.text "description"
+    t.string "url"
+    t.boolean "external"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -51,7 +62,9 @@ ActiveRecord::Schema.define(version: 20180421162802) do
     t.string "unconfirmed_email"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "podcast_token"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["podcast_token"], name: "index_users_on_podcast_token", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 

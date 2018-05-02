@@ -19,6 +19,25 @@ RSpec.describe Contribution, :type => :model do
       expect(users(:alice).contribution.billing_day_of_month).to eq(28)
     end
   end
+  
+  describe "subscribed_up_to" do
+    it "should return something long ago for users without invoices" do
+      users(:alice).create_contribution(amount: 0)
+      expect(users(:alice).contribution.subscribed_up_to).to eq(Time.zone.local(2000, 01, 01) )
+    end
+    
+    it "should return something long ago for users with no paid invoices" do
+      users(:alice).create_contribution(amount: 1)
+      expect(users(:alice).contribution.subscribed_up_to).to eq(Time.zone.local(2000, 01, 01) )
+    end
+    
+    it "should return 1 month after the last paid invoice" do
+      users(:alice).create_contribution(amount: 1)
+      users(:alice).invoices.first.update status: "paid"
+
+      expect(users(:alice).contribution.subscribed_up_to).to eq(Time.zone.local(2018, 03, 01) )
+    end
+  end
 
   describe "self.active_count" do
     it "should exlude 0 satoshi contributors" do

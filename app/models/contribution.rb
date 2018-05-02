@@ -10,6 +10,19 @@ class Contribution < ApplicationRecord
   def as_json(options = nil)
     super({ only: [:amount] }.merge(options || {}))
   end
+  
+  def subscribed_up_to
+    # If user never paid an invoice, return a date far in the past:
+    if user.invoices.count == 0 || (user.invoices.count == 1 && user.invoices.first.status != "paid")
+      return Time.zone.local(2000, 01, 01) 
+    # If most recent invoice is paid, return 1 month past the invoice date:
+    elsif user.invoices.first.status == "paid"
+      return user.invoices.first.created_at + 1.month
+    # Return 1 month past the previous invoice date::
+    else
+      return user.invoices.second.created_at + 1.month
+    end
+  end
 
   def self.active_count
     # TODO: exclude contributors more than 1 month behind in payments

@@ -1,4 +1,6 @@
 class User < ApplicationRecord
+  has_secure_token :podcast_token
+  
   before_create :initialize_contribution
   before_destroy :remove_contribution
   

@@ -39,6 +39,21 @@ Click "Ad a new job", enter `rake invoices:process` and press `Save`. Set freque
 
 It's free to use your own domain with Heroku. SSL for your own domain is also easy to setup, but not free.
 
+## Podcast RSS feed
+
+In order to provide a podcast feed for your supporters, you need to configure
+some channel metadata and provide a URL of an existing podcast RSS feed. Uploading 
+episodes directly isn't supported yet, see #25.
+
+```sh
+heroku config:add PODCAST=1
+heroku config:add PODCAST_TITLE='Sjorsnado Podcast'
+heroku config:add PODCAST_IMAGE=https://example.com/podcast.png
+heroku config:add PODCAST_URL=https://example.com/podcast.rss
+```
+
+In Heroku click "Ad a new job", enter `rake podcast:fetch` and press `Save`. Suggested frequency is hourly.
+
 ## Development
 
 Install [RVM](https://rvm.io) (Ruby Version Manager) and `rvm install` the right [Ruby version](Gemfile#L1). Install [NVM](https://github.com/creationix/nvm#install-script) (Node Version Manager) and `nvm install` the right NodeJS version, see `{engines: {node: ...}}` in [package.json](package.json).
