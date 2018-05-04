@@ -9,6 +9,33 @@ Live instance: [matreon.sprovoost.nl](https://matreon.sprovoost.nl/)
 
 You need to run [c-lightning](https://github.com/ElementsProject/lightning) and [Lightning Charge](https://github.com/ElementsProject/lightning-charge) somewhere.
 
+## Deploy with Docker
+
+Install [Docker](https://docs.docker.com/install/).
+
+Work in progress. For now it just launches `bitcoind` and syncs the node:
+
+Create a directory to store the blockchain, wallet info, etc:
+
+```sh
+mkdir matreon-vol
+pushd matreon-vol
+mkdir bitcoin
+popd
+```
+
+Build the docker image:
+
+```sh
+docker build docker -t matreon:latest
+```
+
+Run docker:
+
+```sh
+docker run --rm --name matreon -v $(PWD)/matreon-vol/bitcoin:/home/bitcoin/.bitcoin  -it matreon:latest -printtoconsole
+```
+
 ## Deploy to Heroku
 
 Create a new Heroku app `app-name` and add the Sendgrid Add-On.
