@@ -1,0 +1,87 @@
+version: "3"
+
+services:
+  bitcoind:
+    restart: always
+    image: bitcoind:0.16.0
+    environment:
+      BITCOIN_EXTRA_ARGS: |
+        ${NETWORK:-testnet}=1
+        rpcport=18332
+        prune=2000
+        maxuploadtarget=100
+        peerbloomfilters=0
+        rpcuser=bitcoin
+        rpcpassword=bitcoin
+        rpcallowip=0.0.0.0/0
+        server=1
+        disablewallet=1
+    expose:
+      - "8333" # Bitcoin Mainnet
+      - "18333" # Bitcoin Testnet
+      - "18332" # Bitcoin RPC
+    ports:
+      - "${BITCOIN_P2P_PORT:-18333}:18333"
+    volumes:
+      - ${DATADIR}/bitcoin:/home/bitcoin/.bitcoin
+
+  lightningd:
+    restart: always
+    depends_on:
+      - bitcoind
+    image: lightningd:latest
+    expose:
+      - "9735"
+    ports:
+      - "${LIGHTNING_PORT:-9735}:9735"
+    links:
+      - bitcoind
+    volumes:
+      - ${DATADIR}/lightning:/root/.lightning
+    entrypoint:
+      - /usr/bin/lightningd 
+      - --bitcoin-rpcconnect=bitcoind
+      - --bitcoin-rpcuser=bitcoin
+      - --bitcoin-rpcport=18332
+      - --bitcoin-rpcpassword=bitcoin
+      - --log-level=debug
+      - --network=${NETWORK:-testnet}
+      - --announce-addr=${IP_ADDRESS}
+      - --bind-addr=0.0.0.0
+  charge:
+    restart: always
+    depends_on:
+      - lightningd
+    environment:
+      - API_TOKEN=${LIGHTNING_CHARGE_API_TOKEN}
+    image: charge:latest
+    expose:
+      - "9112"
+    ports:
+      - "9112:9112"
+    volumes:
+      - ${DATADIR}/charge:/data
+      - ${DATADIR}/lightning:/etc/lightning/
+      
+  db:
+    image: postgres
+    volumes:
+      - ${DATADIR}/pg:/var/lib/postgresql/data
+      
+  web:
+    build: .
+    environment:
+      - FROM_EMAIL=${FROM_EMAIL}
+      - BUGS_TO=${BUGS_TO}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - HOSTNAME=${HOSTNAME}
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - DEVISE_SECRET_KEY=${DEVISE_SECRET_KEY}
+      - DATABASE_URL=postgres://postgres@db:5432
+      - LIGHTNING_CHARGE_API_TOKEN=${LIGHTNING_CHARGE_API_TOKEN}
+    ports:
+      - "80:3000"
+    depends_on:
+      - db

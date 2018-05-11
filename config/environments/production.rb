@@ -1,3 +1,4 @@
+require 'uri'
 Rails.application.configure do
   # Verifies that versions and hashed value of the package contents in the project's package.json
   config.webpacker.check_yarn_integrity = false
@@ -48,8 +49,9 @@ Rails.application.configure do
   # config.action_cable.allowed_request_origins = [ 'http://example.com', /http:\/\/example.*/ ]
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  config.force_ssl = true
-  config.ssl_options = {redirect: { host: ENV['HOSTNAME'] }}
+  # Temp. workaround pending SSL support on EC2: check if we're on Heroku
+  config.force_ssl = ENV['SENDGRID_USERNAME'].present?
+  config.ssl_options = {redirect: { host: URI(ENV['HOSTNAME']).host }}
 
   # Use the lowest log level to ensure availability of diagnostic information
   # when problems arise.
@@ -69,17 +71,20 @@ Rails.application.configure do
   # Ignore bad email addresses and do not raise email delivery errors.
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
   config.action_mailer.raise_delivery_errors = true
-  config.action_mailer.delivery_method = :smtp
-  config.action_mailer.default_url_options = { host: "https://" + ENV['HOSTNAME'] }
-  ActionMailer::Base.smtp_settings = {
-    :address        => 'smtp.sendgrid.net',
-    :port           => '587',
-    :authentication => :plain,
-    :user_name      => ENV['SENDGRID_USERNAME'],
-    :password       => ENV['SENDGRID_PASSWORD'],
-    :domain         => 'heroku.com',
-    :enable_starttls_auto => true
-  }
+  config.action_mailer.default_url_options = { host:  URI(ENV['HOSTNAME']).host }
+  
+    ActionMailer::Base.smtp_settings = {
+      :address        => ENV['SMTP_HOST'] || 'smtp.sendgrid.net',
+      :port           => ENV['SMTP_PORT'] || '587',
+      :authentication => :plain,
+      :user_name      => ENV['SMTP_USERNAME'] || ENV['SENDGRID_USERNAME'],
+      :password       => ENV['SMTP_PASSWORD'] || ENV['SENDGRID_PASSWORD'],
+      :enable_starttls_auto => true
+    }
+    
+    if ENV['SENDGRID_USERNAME']
+      ActionMailer::Base.smtp_settings[:domain] = 'heroku.com'
+    end
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).
@@ -109,7 +114,9 @@ Rails.application.configure do
       :email_prefix => "[Matreon Exception] ",
       :sender_address => ENV['FROM_EMAIL'],
       :exception_recipients => [ENV['BUGS_TO']]
-    }
+    },
+    :error_grouping => true,
+   :ignore_exceptions => ["Rack::Timeout::RequestTimeoutException"] + ExceptionNotifier.ignored_exceptions
 
   ExceptionNotifier::Rake.configure
 end

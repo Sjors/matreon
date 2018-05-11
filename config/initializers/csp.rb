@@ -27,18 +27,18 @@ SecureHeaders::Configuration.default do |config|
       block_all_mixed_content: true, # see http://www.w3.org/TR/mixed-content/
       child_src: %w('self'), # if child-src isn't supported, the value for frame-src will be set.
       connect_src: connect_src,
-      font_src: %w('self'),
+      font_src: %w('self' https://fonts.gstatic.com),
       form_action: %w('self'),
       # Allow iframe in dev mode to see email previews (toggle between HTML & text won't work):
       frame_ancestors: Rails.env.production? ? %w('none') : %w('self'),
-      img_src: %w('self'),
+      img_src: %w('self' data:),
       manifest_src: %w('self'),
       media_src: %w('self'),
       object_src: %w('none'),
       # sandbox: true, # true and [] will set a maximally restrictive setting
       # plugin_types: %w('none'),
-      script_src: %w('self'),
-      style_src: %w('self' 'unsafe-inline'),
+      script_src: %w('self' 'sha256-IlzWR6dzVCqXEAU14doWEOUXkS5MBqVK4CgYx6TjG4c=' 'sha256-I7xUzuU0UQFJfhTnFbqFJTpRHOUM5d8gyfh6+ikTU7Y='),
+      style_src: %w('self' 'unsafe-inline' https://fonts.googleapis.com/css),
       worker_src: %w('self'),
       # upgrade_insecure_requests: true, # see https://www.w3.org/TR/upgrade-insecure-requests/
       # report_uri: %w(https://report-uri.io/example-csp)

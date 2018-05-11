@@ -9,7 +9,7 @@ class Podcast < ApplicationRecord
   scope :published, -> { where('pub_date <= ?', Time.now.utc) }
 
   def self.fetch!
-    raise PodcastError.new("Podcast feature disabled") unless ENV['PODCAST'] == "1"
+    return unless ENV['PODCAST'] == "1"
     ActiveRecord::Base.transaction do
       # Track episode guids to delete stale ones:  
       episode_guids = []

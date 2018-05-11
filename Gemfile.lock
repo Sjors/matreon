@@ -372,6 +372,7 @@ DEPENDENCIES
   mini_racer
   pg
   puma (~> 3.11)
+  rack-proxy
   rack-timeout
   rails (~> 5.1.6)
   rails-controller-testing

@@ -55,7 +55,7 @@ class Invoice extends React.Component {
                 <li>Paid: {invoice.get('paid_at')}</li>
               }
               { !invoice.get('paid_at') && invoice.get('status') != "expired" &&
-                <li><a href={invoice.get('url')} target='_blank'>Pay with Lightning</a></li>
+                <li><a href={invoice.get('url')}>Pay with Lightning</a></li>
               }
             </ul>
           </div>

@@ -5,11 +5,143 @@ Current status: extremely experimental!
 
 Live instance: [matreon.sprovoost.nl](https://matreon.sprovoost.nl/)
 
-## Prerequisites
+## Deploy to AWS using Docker
+
+This is currently quite brittle and not very secure.
+
+Install the Amazon CloudFormation template by downloading [Matreon.Template](https://raw.githubusercontent.com/Sjors/matreon/master/Matreon.Template) and then uploading it on the [CloudFormation stack creation page](https://eu-central-1.console.aws.amazon.com/cloudformation/home?region=eu-central-1&stackName=Matreon#/stacks/new).
+
+Fill out the form, click next a few times and then wait... This [blog post](https://medium.com/provoost-on-crypto/bitcoin-core-lightning-rails-on-aws-ad3bd45b11e0) explains the steps in more detail.
+
+## Deploy elsewhere using Docker
+
+Install [Docker](https://docs.docker.com/install/).
+
+Create a directory to store the blockchain, wallet info, etc:
+
+```sh
+mkdir matreon-vol
+mkdir matreon-vol/bitcoin
+mkdir matreon-vol/lightning
+mkdir matreon-vol/charge
+mkdir matreon-vol/pg
+```
+
+We use Docker Compose to combine a number of containers. Hardcoding a [Docker image checksum](https://docs.docker.com/engine/security/trust/content_trust/#content-trust-operations-and-keys) doesn't prove how the image was built, so to minimize trust, we have to build the containers locally.
+
+### Container 1 - Bitcoin Core
+
+```sh
+git clone https://github.com/NicolasDorier/docker-bitcoin
+docker build docker-bitcoin/core/0.16.0 -t bitcoind:0.16.0
+```
+
+Once the container is running (see below), you can view bitcoind logs (e.g. to
+  see  how syncing the blockchain is going):
+
+```
+docker logs -f --since 1m matreon_bitcoind_1
+```
+
+
+### Container 2 - C-Lightning
+
+```sh
+git clone https://github.com/cdecker/dockerfiles docker-lightning
+docker build docker-lightning/lightning/node -f docker-lightning/lightning/node/Dockerfile.master -t lightningd:latest
+```
+
+Once the container is running (see below), you can monitor the logs:
+
+```sh
+docker logs -f --since 1m matreon_lightningd_1
+```
+
+Or interact:
+
+```sh
+docker-compose exec lightningd lightning-cli help
+```
+
+### Container 3 - Lightning Charge
+
+```sh
+git clone https://github.com/ElementsProject/lightning-charge
+docker build lightning-charge -t charge:latest
+```
+
+### Container 4 - Postgres
+
+We're trusting the upstream image for now.
+
+### Container 5 - Rails & Matreon
+
+```sh
+git clone https://github.com/Sjors/matreon.git
+```
+
+Once the container is running (see below), you can open a Rails console:
+
+```sh
+docker-compose run web rails console
+```
+
+Or view the server logs:
+
+```sh
+docker logs -f matreon_web_1
+```
+
+### Docker Compose
+
+From the Matreon project directory:
+
+```sh
+export NETWORK=testnet # or "bitcoin" for mainnet
+export DATADIR=~/matreon-vol/bitcoin
+export LIGHTNING_CHARGE_API_TOKEN=1234
+export FROM_EMAIL="you@example.com"
+export BUGS_TO="bugs@example.com"
+export SECRET_KEY_BASE=`hexdump -n 64 -e '16/4 "%08x" 1 "\n"' /dev/random`
+export DEVISE_SECRET_KEY=`hexdump -n 64 -e '16/4 "%08x" 1 "\n"' /dev/random`
+export HOSTNAME=http://localhost
+export SMTP_HOST=...
+export SMTP_USERNAME=...
+export SMTP_PASSWORD=...
+docker-compose build
+docker-compose up -d
+```
+
+Migrate the database:
+
+```sh
+docker-compose run web rake db:migrate
+```
+
+Visit [localhost](http://localhost/).
+
+To shut everything down
+
+```
+docker-compose down
+```
+
+### Cron jobs
+
+Add the following cron jobs (`crontab -e`):
+
+```sh
+0 * * * * cd /usr/local/src/matreon && /usr/local/bin/docker-compose run web rake invoices:process
+0 * * * * cd /usr/local/src/matreon && /usr/local/bin/docker-compose run web rake podcast:fetch
+```
+
+## Deploy to Heroku
+
+### Prerequisites
 
 You need to run [c-lightning](https://github.com/ElementsProject/lightning) and [Lightning Charge](https://github.com/ElementsProject/lightning-charge) somewhere.
 
-## Deploy to Heroku
+### Heroku
 
 Create a new Heroku app `app-name` and add the Sendgrid Add-On.
 

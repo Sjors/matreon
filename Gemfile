@@ -15,7 +15,9 @@ gem 'react_on_rails', '10.1.3'
 
 # Use Puma as the app server
 gem 'puma', '~> 3.11'
-# Use SCSS for stylesheets
+
+# Proxy Lightning Charge:
+gem 'rack-proxy'
 
 gem 'secure_headers', '~> 6.0.0.alpha02'
 
