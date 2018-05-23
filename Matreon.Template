@@ -404,7 +404,176 @@
           {"IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : { "Ref" : "SSHLocation"}}
         ]
       }      
-    }          
+    },
+
+    "IBD": {  
+      "Type": "AWS::EC2::Instance",
+      "Metadata" : {
+        "AWS::CloudFormation::Init" : {
+          "configSets" : {
+            "full_install" : [ 
+              "install_cfn",
+              "install_docker",
+              "install_container_bitcoin",
+              "fetch_matreon_repo",
+              "ibd"
+            ]
+          },
+
+          "install_cfn" : {
+            "files" : {
+              "/etc/cfn/cfn-hup.conf" : {
+                "content" : { "Fn::Join" : ["", [
+                  "[main]\n",
+                  "stack=", { "Ref" : "AWS::StackId" }, "\n",
+                  "region=", { "Ref" : "AWS::Region" }, "\n"
+                ]]},
+                "mode"    : "000400",
+                "owner"   : "root",
+                "group"   : "root"
+              },
+
+              "/etc/cfn/hooks.d/cfn-auto-reloader.conf" : {
+                "content": { "Fn::Join" : ["", [
+                  "[cfn-auto-reloader-hook]\n",
+                  "triggers=post.update\n",
+                  "path=Resources.IBD.Metadata.AWS::CloudFormation::Init\n",
+                  "action=/opt/aws/bin/cfn-init -v ",
+                  "         --stack ", { "Ref" : "AWS::StackName" },
+                  "         --resource IBD ",
+                  "         --configsets full_install ",
+                  "         --region ", { "Ref" : "AWS::Region" }, "\n",
+                  "runas=root\n"
+                ]]},
+                "mode"    : "000400",
+                "owner"   : "root",
+                "group"   : "root"
+              }
+            },
+
+            "services" : {
+              "sysvinit" : {  
+                "cfn-hup" : { "enabled" : "true", "ensureRunning" : "true",
+                              "files" : ["/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf"]}
+              }
+            }
+          },
+
+          "install_docker": {
+            "commands": {
+              "01_install_docker": {
+                "command": "yum install -y docker git"
+              },
+              "02_install_docker_compose": {
+                "command": {"Fn::Join" : ["", [
+                  "sudo curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose &&",
+                  "sudo chmod +x /usr/local/bin/docker-compose"
+                ]]}
+              },
+              "03_start_service": {
+                "command": "service docker start"
+              }
+            }
+          },
+          
+          "install_container_bitcoin": {
+            "commands": {
+              "02_clone_repo": {
+                "command": "git clone https://github.com/NicolasDorier/docker-bitcoin"
+              },
+              "03_docker_build": {
+                "command": "docker build docker-bitcoin/core/0.16.0 -t bitcoind:0.16.0"
+              }
+            }
+          },
+          
+          "fetch_matreon_repo": {
+            "commands": {
+              "01_clone_repo": {
+                "command": "git clone https://github.com/Sjors/matreon.git && cd matreon && git checkout 2018/05/fast-ibd"
+              },
+              "02_build_docker_compose": {
+                "command": "cd matreon && /usr/local/bin/docker-compose -f docker-compose-ibd.yml build"
+              },
+            },
+          },
+          
+          "ibd": {
+            "commands": {
+              "01_start": {
+                "command": {"Fn::Join" : ["", [
+                  "cd matreon && NETWORK=", { "Ref" : "Network" }," /usr/local/bin/docker-compose -f docker-compose-ibd.yml up -d"
+                ]]}
+              }
+            }
+          }
+        
+        }
+      },
+      "Properties": {
+        "ImageId" : "ami-5652ce39",
+        "InstanceType"   : "c5.2xlarge",
+        "BlockDeviceMappings" : [
+           {
+             "DeviceName" : "/dev/xvda",
+                "Ebs" : {
+                   "VolumeSize" : "200"
+                 }
+           }
+        ],
+        "SecurityGroups" : [ {"Ref" : "IBDSecurityGroup"} ],
+        "KeyName"        : { "Ref" : "KeyName" },
+        "Tags" : [
+          {"Key" : "Name", "Value" : "Matreon - Temporary Blockchain Downloader"}
+        ],
+        "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
+          "#!/bin/bash -xe\n",
+          "yum update -y aws-cfn-bootstrap\n",
+
+          "/opt/aws/bin/cfn-init -v ",
+          "         --stack ", { "Ref" : "AWS::StackId" },
+          "         --resource IBD ",
+          "         --configsets full_install ",
+          "         --region ", { "Ref" : "AWS::Region" }, "\n",
+
+          "/opt/aws/bin/cfn-signal -e $? ",
+          "         --stack ", { "Ref" : "AWS::StackId" },
+          "         --resource IBD ",
+          "         --region ", { "Ref" : "AWS::Region" }, "\n"
+        ]]}}        
+      },
+      "CreationPolicy" : {
+        "ResourceSignal" : {
+          "Timeout" : "PT300M"
+        }
+      }
+    },
+    
+    "WebServerSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Enable SSH, Bitcoin P2P, Lightning P2P and Charge access",
+        "SecurityGroupIngress" : [
+          {"IpProtocol" : "tcp", "FromPort" : "8883", "ToPort" : "8883", "CidrIp" : "0.0.0.0/0"},
+          {"IpProtocol" : "tcp", "FromPort" : "18883", "ToPort" : "18883", "CidrIp" : "0.0.0.0/0"},
+          {"IpProtocol" : "tcp", "FromPort" : "9735", "ToPort" : "9735", "CidrIp" : "0.0.0.0/0"},
+          {"IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : "0.0.0.0/0"},
+          {"IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : { "Ref" : "SSHLocation"}}
+        ]
+      }      
+    },
+    
+    "IBDSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Enable SSH, Bitcoin P2P, Lightning P2P and Charge access",
+        "SecurityGroupIngress" : [
+          {"IpProtocol" : "tcp", "FromPort" : "8883", "ToPort" : "8883", "CidrIp" : "0.0.0.0/0"},
+          {"IpProtocol" : "tcp", "FromPort" : "18883", "ToPort" : "18883", "CidrIp" : "0.0.0.0/0"},
+          {"IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : { "Ref" : "SSHLocation"}}
+        ]
+      }      
+    } 
   },
   
   "Outputs" : {

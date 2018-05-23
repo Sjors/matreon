@@ -1,0 +1,47 @@
+version: "3"
+
+services:
+  bitcoind:
+    restart: always
+    image: bitcoind:0.16.0
+    environment:
+      BITCOIN_EXTRA_ARGS: |
+        ${NETWORK:-testnet}=1
+        rpcport=18332
+        rpcuser=bitcoin
+        rpcpassword=bitcoin
+        rpcallowip=0.0.0.0/0
+        server=1
+        dbcache=40000
+        maxuploadtarget=10000
+        peerbloomfilters=0
+        disablewallet=1
+    expose:
+      - "8333" # Bitcoin Mainnet
+      - "18333" # Bitcoin Testnet
+      - "18332" # Bitcoin RPC
+    ports:
+      - "${BITCOIN_P2P_PORT:-18333}:18333"
+    volumes:
+      - /etc/bitcoin:/home/bitcoin/.bitcoin
+    networks:
+      - bitcoin
+
+  bitcoin-cli:
+    image: bitcoind:0.16.0 
+    environment:
+      BITCOIN_EXTRA_ARGS: |
+        ${NBITCOIN_NETWORK:-testnet}=1
+        rpcport=18332
+        rpcuser=bitcoin
+        rpcpassword=bitcoin
+    entrypoint: ["/entrypoint.sh", "bitcoin-cli"]
+    command: ""
+    depends_on:
+      - bitcoind
+    network_mode: service:bitcoind
+    volumes:
+      - /etc/bitcoin:/home/bitcoin/.bitcoin
+
+networks:
+  bitcoin:
