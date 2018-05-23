@@ -7,10 +7,11 @@ RSpec.describe Podcast, type: :model do
       allow_any_instance_of(Kernel).to receive(:open).and_return(OpenStruct.new(read: rss_fixture))                 
     end
   
-    it "should throw if PODCAST=0" do
+    it "should exit if PODCAST=0" do
       cached_env_podcast = ENV['PODCAST']
       ENV['PODCAST'] = "0"
-      expect{Podcast.fetch!}.to raise_error(PodcastError)
+      Podcast.fetch!
+      expect(Podcast.count).to eq(1)
       ENV['PODCAST'] = cached_env_podcast
     end
   
