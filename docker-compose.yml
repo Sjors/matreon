@@ -8,7 +8,8 @@ services:
       BITCOIN_EXTRA_ARGS: |
         ${NETWORK:-testnet}=1
         rpcport=18332
-        prune=2000
+        prune=${PRUNE:-2000}
+        dbcache=${DBCACHE:-300}
         maxuploadtarget=100
         peerbloomfilters=0
         rpcuser=bitcoin

@@ -41,14 +41,6 @@
       "AllowedValues" : [ "testnet", "bitcoin"]
     },
 
-    "InstanceType" : {
-      "Description" : "WebServer EC2 instance type. Unless you are famous t2.small should suffice",
-      "Type" : "String",
-      "Default" : "t2.small",
-      "AllowedValues" : [ "t2.small", "t2.medium", "t2.large", "t2.large", "t2.xlarge", "t2.2xlarge"],
-      "ConstraintDescription" : "must be a valid EC2 instance type."
-    },
-
     "SSHLocation" : {
       "Description" : "The IP address range that can be used to SSH to the EC2 instances",
       "Type": "String",
@@ -162,7 +154,7 @@
               "install_container_charge",
               "install_docker_compose_with_pg_and_rails",
               "initial_blockchain_download",
-              "launch_matreon"
+              "prepare_matreon"
             ]
           },
 
@@ -206,7 +198,67 @@
           },
 
           "install_docker": {
+            "files" : {
+              "/usr/lib/systemd/system/docker-compose-matreon.service" : {
+                "content" : { "Fn::Join" : ["\n", [
+                  "[Unit]",
+                  "Description=Matreon service with docker compose",
+                  "Requires=docker.service",
+                  "After=docker.service",
+                  "",
+                  "[Service]",
+                  "Restart=always",
+                  "",
+                  "WorkingDirectory=/usr/local/src/matreon",
+                  "EnvironmentFile=/matreon_data/.env",
+                  "",
+                  "# Remove old containers, images and volumes",
+                  "ExecStartPre=/usr/local/bin/docker-compose down -v",
+                  "ExecStartPre=/usr/local/bin/docker-compose rm -fv",
+                  "ExecStartPre=-/bin/bash -c 'docker volume ls -qf \"name=matreon_\" | xargs docker volume rm'",
+                  "ExecStartPre=-/bin/bash -c 'docker network ls -qf \"name=matreon_\" | xargs docker network rm'",
+                  "ExecStartPre=-/bin/bash -c 'docker ps -aqf \"name=matreon_*\" | xargs docker rm'",
+                  "",
+                  "# Compose up",
+                  "ExecStart=/usr/bin/docker-compose up",
+                  "",
+                  "# Compose down, remove containers and volumes",
+                  "ExecStop=/usr/bin/docker-compose down -v",
+                  "",
+                  "[Install]",
+                  "WantedBy=multi-user.target"
+                ]]},
+                "mode"    : "000400",
+                "owner"   : "root",
+                "group"   : "root"
+              },
+              "/usr/lib/systemd/system/db-migrate.service" : {
+                "content" : { "Fn::Join" : ["\n", [
+                  "[Unit]",
+                  "Description=Matreon migrate database",
+                  "Requires=docker-compose-matreon.service",
+                  "After=docker-compose-matreon.service",
+                  "",
+                  "[Service]",
+                  "Restart=no",
+                  "",
+                  "WorkingDirectory=/usr/local/src/matreon",
+                  "EnvironmentFile=/matreon_data/.env",
+                  "",
+                  "ExecStart=/usr/bin/docker-compose run web rake db:migrate",
+                  "",
+                  "[Install]",
+                  "WantedBy=multi-user.target"
+                ]]},
+                "mode"    : "000400",
+                "owner"   : "root",
+                "group"   : "root"
+              }
+            },
             "commands": {
+              "00_upgrade_system": {
+                "command": "yum update -y"
+              },
               "01_install_docker": {
                 "command": "yum install -y docker git"
               },
@@ -302,7 +354,7 @@
                 "command": "mkdir /matreon_data/pg"
               },
               "02_clone_repo": {
-                "command": "git clone https://github.com/Sjors/matreon.git /usr/local/src/matreon"
+                "command": "git clone https://github.com/Sjors/matreon.git /usr/local/src/matreon && cd /usr/local/src/matreon"
               },
               "03_build_rails_container": {
                 "command": "cd /usr/local/src/matreon && docker-compose build"
@@ -312,38 +364,41 @@
           
           "initial_blockchain_download": {
             "commands": {
-              "01_start_bitcoind": {
-                "command": "cd /usr/local/src/matreon && set -a && source /matreon_data/.env && docker-compose up -d bitcoind"
+              "01_create_ram_disk": {
+                "command": "sudo mkdir /mnt/ramdisk && mount -t tmpfs -o size=50000m tmpfs /mnt/ramdisk"
               },
-              "02_wait_for_sync": {
+              "02_start_bitcoind": {
+                "command": "cd /usr/local/src/matreon && set -a && source /matreon_data/.env && DATADIR=/mnt/ramdisk DBCACHE=10000 PRUNE=40000 docker-compose up -d bitcoind"
+              },
+              "03_wait_for_sync_prune_copy_stop": {
                 "command": "cd /usr/local/src/matreon && set -a && source /matreon_data/.env && ./wait_for_ibd.sh"
               }
             }
           },
-          
-          "launch_matreon": {
-            "commands": {    
-              "01_launch": {
-                "command": "cd /usr/local/src/matreon && set -a && source /matreon_data/.env && docker-compose up -d"
-              },
-              "02_migrate_db": {
-                "command": "cd /usr/local/src/matreon && docker-compose run web rake db:migrate"
-              },
-              "03_install_crontab": {
+
+          "prepare_matreon": {
+            "commands": {
+              "01_install_crontab": {
                 "command": { "Fn::Join" : ["", [
                   "echo '0 * * * * root cd /usr/local/src/matreon && set -a && source /matreon_data/.env && docker-compose run web rake invoices:process' >> /tmp/crontab \n",
                   "echo '0 * * * * root cd /usr/local/src/matreon && set -a && source /matreon_data/.env && docker-compose run web rake podcast:fetch' >> /tmp/crontab \n",
                   "echo '' >> /tmp/crontab",
                   "crontab /tmp/crontab"
                 ]]}
+              },
+              "02_start_docker_compose_service_after_reboot": {
+                "command": "systemctl enable docker-compose-matreon.service"
+              },
+              "03_run_db_migrate_after_reboot": {
+                "command": "systemctl enable db-migrate.service"
               }
             }
           }
         }
       },
       "Properties": {
-        "ImageId" : "ami-5652ce39",
-        "InstanceType"   : { "Ref" : "InstanceType" },
+        "ImageId" : "ami-43eec3a8",
+        "InstanceType"   : "m5.4xlarge",
         "BlockDeviceMappings" : [
            {
              "DeviceName" : "/dev/xvda",
@@ -375,7 +430,7 @@
       },
       "CreationPolicy" : {
         "ResourceSignal" : {
-          "Timeout" : "PT14400M"
+          "Timeout" : "PT300M"
         }
       }
     },

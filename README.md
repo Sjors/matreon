@@ -11,7 +11,16 @@ This is currently quite brittle and not very secure.
 
 Install the Amazon CloudFormation template by downloading [Matreon.Template](https://raw.githubusercontent.com/Sjors/matreon/master/Matreon.Template) and then uploading it on the [CloudFormation stack creation page](https://eu-central-1.console.aws.amazon.com/cloudformation/home?region=eu-central-1&stackName=Matreon#/stacks/new).
 
-Fill out the form, click next a few times and then wait... This [blog post](https://medium.com/provoost-on-crypto/bitcoin-core-lightning-rails-on-aws-ad3bd45b11e0) explains the steps in more detail.
+Fill out the form, click next a few times and then wait while it installs applications and downloads the blockchain. After about twenty minutes on testnet or three hours on mainnet the status should change from `CREATE_IN_PROGRESS` to `CREATE_COMPLETE`.
+
+In order to download the blockchain in a reasonable amount of time, a high performance machine was used. Similar to how a sea squirt eats its own brain when it finds a place to stay and no longer needs to swim, you should downgrade to a cheaper machine once the blockchain has been downloaded.
+
+Click on the stack name in the [Cloud Formation home]( https://eu-central-1.console.aws.amazon.com/cloudformation/home) and look under resources. Click the link next to WebServer (i-xxxxxxx) which takes you to the EC2 instance management page. Click on the Actions button -> Instance State -> Stop. Wait until the instance is stopped. Click on the Actions button again -> Instance Settings
+-> Change instance type and choose `t2.micro`. Finally, start the instance. A few minutes later your Matreon should be ready to go!
+
+To monitor logs of the docker containers: `journalctl -u docker-compose-matreon -f`
+
+This [blog post](https://medium.com/provoost-on-crypto/bitcoin-core-lightning-rails-on-aws-ad3bd45b11e0) explains the steps in more detail.
 
 ## Deploy elsewhere using Docker
 
@@ -42,7 +51,6 @@ Once the container is running (see below), you can view bitcoind logs (e.g. to
 ```
 docker logs -f --since 1m matreon_bitcoind_1
 ```
-
 
 ### Container 2 - C-Lightning
 
