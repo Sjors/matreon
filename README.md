@@ -52,6 +52,12 @@ Once the container is running (see below), you can view bitcoind logs (e.g. to
 docker logs -f --since 1m matreon_bitcoind_1
 ```
 
+To interact:
+
+```
+docker-compose exec bitcoind bitcoin-cli -rpcuser=bitcoin -rpcpassword=bitcoin -testnet help
+```
+
 ### Container 2 - C-Lightning
 
 ```sh
