@@ -124,10 +124,11 @@ Resources:
         configSets:
           full_install:
             - install_cfn
+            - configure_system
             - install_docker
-            - prepare_datadir
-            - install_container_bitcoin
-            - install_container_lightning
+            - create_files
+            - install_bitcoind
+            - install_lightningd
             - install_container_charge
             - install_docker_compose_with_pg_and_rails
             - initial_blockchain_download
@@ -160,40 +161,213 @@ Resources:
                 files:
                   - /etc/cfn/cfn-hup.conf
                   - /etc/cfn/hooks.d/cfn-auto-reloader.conf
+        
+        configure_system:
+          commands:
+            01_upgrade:
+              command: yum update -y
+            02_add_user_bitcoin:
+              command: groupadd -r bitcoin && useradd -r -m -g bitcoin bitcoin
+        
         install_docker:
+          commands:
+            01_install_docker:
+              command: yum install -y docker git
+            02_install_docker_compose:
+              command: curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-$(uname
+                -s)-$(uname -m) -o /usr/local/bin/docker-compose &&chmod +x /usr/local/bin/docker-compose
+                &&ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose &&chmod
+                +x /usr/bin/docker-compose
+            03_start_service:
+              command: service docker start
+        
+        create_files:
           files:
-            /usr/lib/systemd/system/docker-compose-matreon.service:
+            /matreon_data/.env:
+              content: !Sub |
+                HOSTNAME=${HostName}
+                FROM_EMAIL=${FromEmail}
+                BUGS_TO=${BugsEmail}
+                SMTP_HOST=${SmtpHost}
+                SMTP_PORT=${SmtpPort}
+                SMTP_USERNAME=${SmtpUser}
+                SMTP_PASSWORD=${SmtpPassword}
+                
+                PODCAST=${Podcast}
+                PODCAST_TITLE=${PodcastTitle}
+                PODCAST_URL=${PodcastUrl}
+                PODCAST_IMAGE=${PodcastImage}
+                DATADIR=/matreon_data
+  
+            /etc/bitcoin/bitcoin.conf:
+              content: !Sub |
+                ${Network}=1
+                maxuploadtarget=100
+                peerbloomfilters=0
+                rpcallowip=0.0.0.0/0
+                server=1
+                disablewallet=1
+              mode: '000444'
+              
+            /home/bitcoin/.lightning/config:
+              content: !Sub |
+                bitcoin-datadir=/home/bitcoin/.bitcoin
+                network=${Network}
+                log-level=debug
+                log-file=debug.log
+                announce-addr=${IPAddress}
+                bind-addr=0.0.0.0
+                
+            /tmp/install_bitcoind.sh:
+              content: !Sub |-
+                #!/bin/bash
+                cd /tmp
+                export BITCOIN_VERSION=0.16.0
+                export BITCOIN_URL=https://bitcoincore.org/bin/bitcoin-core-0.16.0/bitcoin-0.16.0-x86_64-linux-gnu.tar.gz
+                export BITCOIN_SHA256=e6322c69bcc974a29e6a715e0ecb8799d2d21691d683eeb8fef65fc5f6a66477
+                export BITCOIN_ASC_URL=https://bitcoincore.org/bin/bitcoin-core-0.16.0/SHA256SUMS.asc
+                export BITCOIN_PGP_KEY=01EA5486DE18A882D4C2684590C8019E36C2E964
+                wget -qO bitcoin.tar.gz "$BITCOIN_URL"
+                echo "$BITCOIN_SHA256 bitcoin.tar.gz" | sha256sum -c - \
+                && gpg --keyserver keyserver.ubuntu.com --recv-keys "$BITCOIN_PGP_KEY" \
+                && wget -qO bitcoin.asc "$BITCOIN_ASC_URL" \
+                && gpg --verify bitcoin.asc \
+                && tar -xzvf bitcoin.tar.gz -C /usr/local --strip-components=1 --exclude=*-qt
+                
+              mode: '000700'
+
+            /tmp/wait_for_ibd.sh:
+              content: !Sub |-
+                #!/bin/bash
+                export OPTS="-conf=/etc/bitcoin/bitcoin.conf -datadir=/mnt/ramdisk/bitcoin"
+                while sleep 60
+                do
+                  if bitcoin-cli $OPTS getblocktemplate; then
+                    export BLOCK_COUNT=`bitcoin-cli $OPTS getblockcount`
+                    bitcoin-cli $OPTS pruneblockchain $BLOCK_COUNT
+                    bitcoin-cli $OPTS stop
+                    while sleep 10 
+                    do # Wait for shutdown
+                      if ! bitcoin-cli $OPTS getblockcount; then
+                        break
+                      fi
+                    done
+                    break
+                  fi
+                done
+                mv /mnt/ramdisk/bitcoin /home/bitcoin/.bitcoin
+                
+              owner: bitcoin
+              group: bitcoin
+              mode: '000700'
+                
+            /lib/systemd/system/bitcoind.service:
+              content: |-
+                [Unit]
+                Description=Bitcoin daemon
+                After=network.target
+
+                [Service]
+                ExecStart=/usr/local/bin/bitcoind -prune=2000 -dbcache=300 -daemon \
+                          -conf=/etc/bitcoin/bitcoin.conf -pid=/run/bitcoind/bitcoind.pid
+
+                # Creates /run/bitcoind owned by bitcoin
+                RuntimeDirectory=bitcoind
+                User=bitcoin
+                Type=forking
+                PIDFile=/run/bitcoind/bitcoind.pid
+                Restart=on-failure
+                
+                # Hardening measures
+                ####################
+                
+                # Provide a private /tmp and /var/tmp.
+                PrivateTmp=true
+                
+                # Mount /usr, /boot/ and /etc read-only for the process.
+                ProtectSystem=full
+                
+                # Disallow the process and all of its children to gain
+                # new privileges through execve().
+                NoNewPrivileges=true
+                
+                # Use a new /dev namespace only populated with API pseudo devices
+                # such as /dev/null, /dev/zero and /dev/random.
+                PrivateDevices=true
+                
+                [Install]
+                WantedBy=multi-user.target
+              
+              mode: '000400'
+              
+            /lib/systemd/system/lightningd.service:
+              content: |-
+                [Unit]
+                Description=Lightning daemon
+                After=bitcoind.service
+
+                [Service]
+                ExecStart=/usr/local/bin/lightningd --daemon --pid-file=/run/lightningd/lightningd.pid
+
+                # Creates /run/lightningd owned by bitcoin
+                RuntimeDirectory=lightningd
+                User=bitcoin
+                Type=forking
+                PIDFile=/run/lightningd/lightningd.pid
+                Restart=on-failure
+                
+                # Hardening measures
+                ####################
+                
+                # Provide a private /tmp and /var/tmp.
+                PrivateTmp=true
+                
+                # Mount /usr, /boot/ and /etc read-only for the process.
+                ProtectSystem=full
+                
+                # Disallow the process and all of its children to gain
+                # new privileges through execve().
+                NoNewPrivileges=true
+                
+                # Use a new /dev namespace only populated with API pseudo devices
+                # such as /dev/null, /dev/zero and /dev/random.
+                PrivateDevices=true
+                
+                [Install]
+                WantedBy=multi-user.target
+              
+              mode: '000400'
+              
+            /lib/systemd/system/docker-compose-matreon.service:
               content: |-
                 [Unit]
                 Description=Matreon service with docker compose
-                Requires=docker.service
-                After=docker.service
-
+                Requires=lightningd.service
+                After=lightningd.service
+                
                 [Service]
                 Restart=always
-
+                
                 WorkingDirectory=/usr/local/src/matreon
                 EnvironmentFile=/matreon_data/.env
-
+                
                 # Remove old containers, images and volumes
                 ExecStartPre=/usr/local/bin/docker-compose down -v
                 ExecStartPre=/usr/local/bin/docker-compose rm -fv
-                ExecStartPre=-/bin/bash -c 'docker volume ls -qf "name=matreon_" | xargs docker volume rm'
                 ExecStartPre=-/bin/bash -c 'docker network ls -qf "name=matreon_" | xargs docker network rm'
                 ExecStartPre=-/bin/bash -c 'docker ps -aqf "name=matreon_*" | xargs docker rm'
-
+                
                 # Compose up
                 ExecStart=/usr/bin/docker-compose up
-
+                
                 # Compose down, remove containers and volumes
                 ExecStop=/usr/bin/docker-compose down -v
-
+                
                 [Install]
                 WantedBy=multi-user.target
               mode: '000400'
-              owner: root
-              group: root
-            /usr/lib/systemd/system/db-migrate.service:
+
+            /lib/systemd/system/db-migrate.service:
               content: |-
                 [Unit]
                 Description=Matreon migrate database
@@ -210,39 +384,7 @@ Resources:
 
                 [Install]
                 WantedBy=multi-user.target
-              mode: '000400'
-              owner: root
-              group: root
-          commands:
-            00_upgrade_system:
-              command: yum update -y
-            01_install_docker:
-              command: yum install -y docker git
-            02_install_docker_compose:
-              command: curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-$(uname
-                -s)-$(uname -m) -o /usr/local/bin/docker-compose &&chmod +x /usr/local/bin/docker-compose
-                &&ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose &&chmod
-                +x /usr/bin/docker-compose
-            03_start_service:
-              command: service docker start
-        prepare_datadir:
-          files:
-            /matreon_data/.env:
-              content: !Sub |
-                HOSTNAME=${HostName}
-                FROM_EMAIL=${FromEmail}
-                BUGS_TO=${BugsEmail}
-                SMTP_HOST=${SmtpHost}
-                SMTP_PORT=${SmtpPort}
-                SMTP_USERNAME=${SmtpUser}
-                SMTP_PASSWORD=${SmtpPassword}
-                NETWORK=${Network}
-                PODCAST=${Podcast}
-                PODCAST_TITLE=${PodcastTitle}
-                PODCAST_URL=${PodcastUrl}
-                PODCAST_IMAGE=${PodcastImage}
-                DATADIR=/matreon_data
-                IP_ADDRESS=${IPAddress}
+              mode: '000400'  
                 
           commands:
             01_set_secret_key_base:
@@ -252,32 +394,30 @@ Resources:
             03_set_lightning_charge_api_token:
               command: echo "LIGHTNING_CHARGE_API_TOKEN=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /matreon_data/.env
               
-        install_container_bitcoin:
+        install_bitcoind:
           commands:
-            01_configure_datadir:
-              command: mkdir /matreon_data/bitcoin
-            02_clone_repo:
-              command: git clone https://github.com/NicolasDorier/docker-bitcoin /usr/local/src/docker-bitcoin
-            03_docker_build:
-              command: docker build /usr/local/src/docker-bitcoin/core/0.16.0 -t bitcoind:0.16.0
-        install_container_lightning:
+            01_install:
+              command: sh /tmp/install_bitcoind.sh
+        install_lightningd:
           commands:
-            01_configure_datadir:
-              command: mkdir /matreon_data/lightning
+            01_yum_depends:
+              command: yum install autoconf automake git libtool gmp-devel sqlite-devel python python3 net-tools -y
             02_clone_repo:
-              command: git clone https://github.com/cdecker/dockerfiles /usr/local/src/docker-lightning
-            03_docker_build:
-              command: docker build /usr/local/src/docker-lightning/lightning/node
-                -f /usr/local/src/docker-lightning/lightning/node/Dockerfile.master
-                -t lightningd:latest
+              command: git clone https://github.com/ElementsProject/lightning /usr/local/src/lightning
+            03_make:
+              command: cd /usr/local/src/lightning && make && make install
+            04_fix_permissions:
+              command: chown -R bitcoin:bitcoin /home/bitcoin/.lightning
         install_container_charge:
           commands:
             01_configure_datadir:
               command: mkdir /matreon_data/charge
-            02_clone_repo:
+            02_add_symlink:
+              command: ln -s /home/bitcoin/.lightning /matreon_data/lightning
+            03_clone_repo:
               command: git clone https://github.com/Sjors/lightning-charge /usr/local/src/lightning-charge
                 && cd /usr/local/src/lightning-charge && git checkout 2018/05/node-uri
-            03_docker_build:
+            04_docker_build:
               command: docker build /usr/local/src/lightning-charge -t charge:latest
         install_docker_compose_with_pg_and_rails:
           commands:
@@ -285,21 +425,17 @@ Resources:
               command: mkdir /matreon_data/pg
             02_clone_repo:
               command: git clone https://github.com/Sjors/matreon.git /usr/local/src/matreon
-                && cd /usr/local/src/matreon
             03_build_rails_container:
               command: cd /usr/local/src/matreon && docker-compose build
         initial_blockchain_download:
           commands:
             01_create_ram_disk:
-              command: sudo mkdir /mnt/ramdisk && mount -t tmpfs -o size=50000m tmpfs
-                /mnt/ramdisk
+              command: mkdir /mnt/ramdisk && mount -t tmpfs -o size=55000m tmpfs
+                /mnt/ramdisk && mkdir /mnt/ramdisk/bitcoin && chown -R bitcoin:bitcoin /mnt/ramdisk/bitcoin
             02_start_bitcoind:
-              command: cd /usr/local/src/matreon && set -a && source /matreon_data/.env
-                && DATADIR=/mnt/ramdisk DBCACHE=10000 PRUNE=40000 docker-compose up
-                -d bitcoind
+              command: su - bitcoin --command "bitcoind -conf=/etc/bitcoin/bitcoin.conf -datadir=/mnt/ramdisk/bitcoin -dbcache=4000 -prune=50000 -daemon"
             03_wait_for_sync_prune_copy_stop:
-              command: cd /usr/local/src/matreon && set -a && source /matreon_data/.env
-                && ./wait_for_ibd.sh
+              command: su - bitcoin --command "/tmp/wait_for_ibd.sh"
         prepare_matreon:
           commands:
             01_install_crontab:
@@ -309,10 +445,21 @@ Resources:
                 \ && set -a && source /matreon_data/.env && docker-compose run web\
                 \ rake podcast:fetch' >> /tmp/crontab \necho '' >> /tmp/crontabcrontab\
                 \ /tmp/crontab"
-            02_start_docker_compose_service_after_reboot:
+            02_start_bitcoind_service_after_reboot:
+              command: systemctl enable bitcoind.service
+            03_start_lightningd_service_after_reboot:
+              command: systemctl enable lightningd.service
+            10_start_docker_after_reboot:
+              command: systemctl enable docker
+            11_start_docker_compose_service_after_reboot:
               command: systemctl enable docker-compose-matreon.service
-            03_run_db_migrate_after_reboot:
+            20_run_db_migrate_after_reboot:
               command: systemctl enable db-migrate.service
+            90_cleanup:
+              command: rm -rf /tmp/*
+            99_shutdown:
+              command: shutdown 2
+
     Properties:
       ImageId: ami-43eec3a8
       InstanceType: m5.4xlarge
@@ -334,7 +481,7 @@ Resources:
           /opt/aws/bin/cfn-signal -e $?          --stack ${AWS::StackId}         --resource WebServer          --region ${AWS::Region}
     CreationPolicy:
       ResourceSignal:
-        Timeout: PT300M
+        Timeout: PT600M
   IPAddress:
     Type: AWS::EC2::EIP
   IPAssoc:

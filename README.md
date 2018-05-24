@@ -11,12 +11,15 @@ This is currently quite brittle and not very secure.
 
 Install the Amazon CloudFormation template by downloading [Matreon.Template](https://raw.githubusercontent.com/Sjors/matreon/master/Matreon.Template) and then uploading it on the [CloudFormation stack creation page](https://eu-central-1.console.aws.amazon.com/cloudformation/home?region=eu-central-1&stackName=Matreon#/stacks/new).
 
-Fill out the form, click next a few times and then wait while it installs applications and downloads the blockchain. After about twenty minutes on testnet or three hours on mainnet the status should change from `CREATE_IN_PROGRESS` to `CREATE_COMPLETE`.
+Fill out the form, click next a few times and then wait while it installs applications and downloads the blockchain. After about half an hour on testnet or ten hours on mainnet the status should change from `CREATE_IN_PROGRESS` to `CREATE_COMPLETE`.
 
 In order to download the blockchain in a reasonable amount of time, a high performance machine was used. Similar to how a sea squirt eats its own brain when it finds a place to stay and no longer needs to swim, you should downgrade to a cheaper machine once the blockchain has been downloaded.
 
-Click on the stack name in the [Cloud Formation home]( https://eu-central-1.console.aws.amazon.com/cloudformation/home) and look under resources. Click the link next to WebServer (i-xxxxxxx) which takes you to the EC2 instance management page. Click on the Actions button -> Instance State -> Stop. Wait until the instance is stopped. Click on the Actions button again -> Instance Settings
--> Change instance type and choose `t2.micro`. Finally, start the instance. A few minutes later your Matreon should be ready to go!
+Click on the stack name in the [Cloud Formation home]( https://eu-central-1.console.aws.amazon.com/cloudformation/home) and look under resources. Click the link next to WebServer (i-xxxxxxx) which takes you to the EC2 instance management page (you may need to refresh the page first).
+
+The machine state should be `stopped`, but if it isn't click on the Actions button -> Instance State -> Stop.
+
+Once it's stopped, click on the Actions button -> Instance Settings -> Change nstance type and choose `t2.small`. Finally, start the instance. A few minutes later your Matreon should be ready to go!
 
 To monitor logs of the docker containers: `journalctl -u docker-compose-matreon -f`
 
@@ -30,7 +33,6 @@ Create a directory to store the blockchain, wallet info, etc:
 
 ```sh
 mkdir matreon-vol
-mkdir matreon-vol/bitcoin
 mkdir matreon-vol/lightning
 mkdir matreon-vol/charge
 mkdir matreon-vol/pg
@@ -38,44 +40,25 @@ mkdir matreon-vol/pg
 
 We use Docker Compose to combine a number of containers. Hardcoding a [Docker image checksum](https://docs.docker.com/engine/security/trust/content_trust/#content-trust-operations-and-keys) doesn't prove how the image was built, so to minimize trust, we have to build the containers locally.
 
-### Container 1 - Bitcoin Core
+However for performance critical stuff like Bitcoin Core, it's better to just install
+these manually.
 
-```sh
-git clone https://github.com/NicolasDorier/docker-bitcoin
-docker build docker-bitcoin/core/0.16.0 -t bitcoind:0.16.0
-```
+### Bitcoin Core
 
-Once the container is running (see below), you can view bitcoind logs (e.g. to
-  see  how syncing the blockchain is going):
+Download the latest release from [bitcoincore.org](https://bitcoincore.org/en/download/).
 
-```
-docker logs -f --since 1m matreon_bitcoind_1
-```
-
-To interact:
+You can either use the GUI or `bitcoind`, as long as you provide RPC access. Create a `bitcoin.conf` file:
 
 ```
-docker-compose exec bitcoind bitcoin-cli -rpcuser=bitcoin -rpcpassword=bitcoin -testnet help
+testnet=1
+rpcallowip=0.0.0.0/0
+server=1
+disablewallet=1
 ```
 
-### Container 2 - C-Lightning
+### C-Lightning
 
-```sh
-git clone https://github.com/cdecker/dockerfiles docker-lightning
-docker build docker-lightning/lightning/node -f docker-lightning/lightning/node/Dockerfile.master -t lightningd:latest
-```
-
-Once the container is running (see below), you can monitor the logs:
-
-```sh
-docker logs -f --since 1m matreon_lightningd_1
-```
-
-Or interact:
-
-```sh
-docker-compose exec lightningd lightning-cli help
-```
+See [installation instructions](https://github.com/ElementsProject/lightning/blob/master/doc/INSTALL.md).
 
 ### Container 3 - Lightning Charge
 
