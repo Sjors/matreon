@@ -1,471 +1,373 @@
-{
-  "AWSTemplateFormatVersion" : "2010-09-09",
-  
-  "Description" : "Creates a single EC2 instance with a pruned Bitcoin Core node, C-Lightning, Lightning Charge, Postgres, Ruby on Rails and Matreon.",
-  
-  "Metadata" : {
-    "AWS::CloudFormation::Interface" : {
-      "ParameterGroups" : [
-        {
-          "Label" : { "default" : "Server" },
-          "Parameters" : [ "InstanceType", "KeyName", "SSHLocation" , "BugsEmail" ]
-        },
-        {
-          "Label" : { "default":"Bitcoin" },
-          "Parameters" : [ "Network" ]
-        },
-        {
-          "Label" : { "default":"Matreon" },
-          "Parameters" : [ "HostName", "FromEmail", "SmtpHost", "SmtpUser", "SmtpPassword", "SmtpPort" ]
-        },
-        {
-          "Label" : { "default":"Podcast" },
-          "Parameters" : [ "Podcast", "PodcastTitle", "PodcastImage", "PodcastUrl" ]
-        }
-      ]
-    },
-  },
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates a single EC2 instance with a pruned Bitcoin Core node, C-Lightning,
+  Lightning Charge, Postgres, Ruby on Rails and Matreon.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Server
+        Parameters:
+          - InstanceType
+          - KeyName
+          - SSHLocation
+          - BugsEmail
+      - Label:
+          default: Bitcoin
+        Parameters:
+          - Network
+      - Label:
+          default: Matreon
+        Parameters:
+          - HostName
+          - FromEmail
+          - SmtpHost
+          - SmtpUser
+          - SmtpPassword
+          - SmtpPort
+      - Label:
+          default: Podcast
+        Parameters:
+          - Podcast
+          - PodcastTitle
+          - PodcastImage
+          - PodcastUrl
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  Network:
+    Description: Real Bitcoin or testnet
+    Type: String
+    Default: testnet
+    AllowedValues:
+      - testnet
+      - bitcoin
+  SSHLocation:
+    Description: The IP address range that can be used to SSH to the EC2 instances
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  HostName:
+    Default: http://example.com
+    Description: Hostname, no trailing slash
+    Type: String
+    MinLength: '5'
+    MaxLength: '100'
+  FromEmail:
+    Default: you@example.com
+    Description: From email address
+    Type: String
+    MinLength: '5'
+    MaxLength: '100'
+  BugsEmail:
+    Default: bugs@example.com
+    Description: Bug report email address
+    Type: String
+    MinLength: '5'
+    MaxLength: '100'
+  SmtpHost:
+    Default: smtp.fastmail.com
+    Description: SMTP server
+    Type: String
+    MinLength: '5'
+    MaxLength: '100'
+  SmtpPort:
+    Default: '587'
+    Description: SMTP port
+    Type: String
+    MinLength: '1'
+    MaxLength: '5'
+  SmtpUser:
+    Default: you@example.com
+    Description: SMTP username
+    Type: String
+    MinLength: '5'
+    MaxLength: '100'
+  SmtpPassword:
+    Default: ''
+    Description: SMTP password
+    Type: String
+    NoEcho: 'true'
+    MinLength: '0'
+    MaxLength: '100'
+  Podcast:
+    Description: Enable podcast feature. Currently requires an existing RSS source.
+    Type: String
+    Default: '0'
+    AllowedValues:
+      - '0'
+      - '1'
+  PodcastTitle:
+    Description: Podcast title
+    Type: String
+    MinLength: '0'
+    MaxLength: '100'
+  PodcastImage:
+    Description: Podcast image URL
+    Type: String
+    MinLength: '0'
+    MaxLength: '255'
+  PodcastUrl:
+    Description: Existing podcast RSS feed
+    Type: String
+    MinLength: '0'
+    MaxLength: '255'
+Resources:
+  WebServer:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          full_install:
+            - install_cfn
+            - install_docker
+            - prepare_datadir
+            - install_container_bitcoin
+            - install_container_lightning
+            - install_container_charge
+            - install_docker_compose_with_pg_and_rails
+            - initial_blockchain_download
+            - prepare_matreon
+        install_cfn:
+          files:
+            /etc/cfn/cfn-hup.conf:
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+              mode: '000400'
+              owner: root
+              group: root
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.WebServer.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v          --stack ${AWS::StackName}         --resource WebServer          --configsets full_install          --region ${AWS::Region}
+                runas=root
+              mode: '000400'
+              owner: root
+              group: root
+          services:
+            sysvinit:
+              cfn-hup:
+                enabled: 'true'
+                ensureRunning: 'true'
+                files:
+                  - /etc/cfn/cfn-hup.conf
+                  - /etc/cfn/hooks.d/cfn-auto-reloader.conf
+        install_docker:
+          files:
+            /usr/lib/systemd/system/docker-compose-matreon.service:
+              content: |-
+                [Unit]
+                Description=Matreon service with docker compose
+                Requires=docker.service
+                After=docker.service
 
-  "Parameters" : {
-    
-    "KeyName": {
-      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
-      "Type": "AWS::EC2::KeyPair::KeyName",
-      "ConstraintDescription" : "must be the name of an existing EC2 KeyPair."
-    },
-    
-    "Network" : {
-      "Description" : "Real Bitcoin or testnet",
-      "Type" : "String",
-      "Default" : "testnet",
-      "AllowedValues" : [ "testnet", "bitcoin"]
-    },
+                [Service]
+                Restart=always
 
-    "SSHLocation" : {
-      "Description" : "The IP address range that can be used to SSH to the EC2 instances",
-      "Type": "String",
-      "MinLength": "9",
-      "MaxLength": "18",
-      "Default": "0.0.0.0/0",
-      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
-      "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
-    },
-    
-    "HostName": {
-      "Default": "http://example.com",
-      "Description" : "Hostname, no trailing slash",
-      "Type": "String",
-      "MinLength": "5",
-      "MaxLength": "100"
-    },
-    
-    "FromEmail": {
-      "Default": "you@example.com",
-      "Description" : "From email address",
-      "Type": "String",
-      "MinLength": "5",
-      "MaxLength": "100"
-    },
-    
-    "BugsEmail": {
-      "Default": "bugs@example.com",
-      "Description" : "Bug report email address",
-      "Type": "String",
-      "MinLength": "5",
-      "MaxLength": "100"
-    },
-    
-    "SmtpHost": {
-      "Default": "smtp.fastmail.com",
-      "Description" : "SMTP server",
-      "Type": "String",
-      "MinLength": "5",
-      "MaxLength": "100"
-    },
-    
-    "SmtpPort": {
-      "Default": "587",
-      "Description" : "SMTP port",
-      "Type": "String",
-      "MinLength": "1",
-      "MaxLength": "5"
-    },
-    
-    "SmtpUser": {
-      "Default": "you@example.com",
-      "Description" : "SMTP username",
-      "Type": "String",
-      "MinLength": "5",
-      "MaxLength": "100"
-    },
-    
-    "SmtpPassword": {
-      "Default": "",
-      "Description" : "SMTP password",
-      "Type": "String",
-      "NoEcho" : "true",
-      "MinLength": "0",
-      "MaxLength": "100"
-    },
-    
-    "Podcast" : {
-      "Description" : "Enable podcast feature. Currently requires an existing RSS source.",
-      "Type" : "String",
-      "Default" : "0",
-      "AllowedValues" : [ "0", "1"]
-    },
-    
-    "PodcastTitle" : {
-      "Description" : "Podcast title",
-      "Type": "String",
-      "MinLength": "0",
-      "MaxLength": "100"
-    },
-    
-    "PodcastImage" : {
-      "Description" : "Podcast image URL",
-      "Type": "String",
-      "MinLength": "0",
-      "MaxLength": "255"
-    },
-    
-    "PodcastUrl" : {
-      "Description" : "Existing podcast RSS feed",
-      "Type": "String",
-      "MinLength": "0",
-      "MaxLength": "255"
-    }
-    
-  },
+                WorkingDirectory=/usr/local/src/matreon
+                EnvironmentFile=/matreon_data/.env
 
-  "Resources" : {     
+                # Remove old containers, images and volumes
+                ExecStartPre=/usr/local/bin/docker-compose down -v
+                ExecStartPre=/usr/local/bin/docker-compose rm -fv
+                ExecStartPre=-/bin/bash -c 'docker volume ls -qf "name=matreon_" | xargs docker volume rm'
+                ExecStartPre=-/bin/bash -c 'docker network ls -qf "name=matreon_" | xargs docker network rm'
+                ExecStartPre=-/bin/bash -c 'docker ps -aqf "name=matreon_*" | xargs docker rm'
 
-    "WebServer": {  
-      "Type": "AWS::EC2::Instance",
-      "Metadata" : {
-        "AWS::CloudFormation::Init" : {
-          "configSets" : {
-            "full_install" : [ 
-              "install_cfn",
-              "install_docker",
-              "prepare_datadir",
-              "install_container_bitcoin",
-              "install_container_lightning",
-              "install_container_charge",
-              "install_docker_compose_with_pg_and_rails",
-              "initial_blockchain_download",
-              "prepare_matreon"
-            ]
-          },
+                # Compose up
+                ExecStart=/usr/bin/docker-compose up
 
-          "install_cfn" : {
-            "files" : {
-              "/etc/cfn/cfn-hup.conf" : {
-                "content" : { "Fn::Join" : ["", [
-                  "[main]\n",
-                  "stack=", { "Ref" : "AWS::StackId" }, "\n",
-                  "region=", { "Ref" : "AWS::Region" }, "\n"
-                ]]},
-                "mode"    : "000400",
-                "owner"   : "root",
-                "group"   : "root"
-              },
+                # Compose down, remove containers and volumes
+                ExecStop=/usr/bin/docker-compose down -v
 
-              "/etc/cfn/hooks.d/cfn-auto-reloader.conf" : {
-                "content": { "Fn::Join" : ["", [
-                  "[cfn-auto-reloader-hook]\n",
-                  "triggers=post.update\n",
-                  "path=Resources.WebServer.Metadata.AWS::CloudFormation::Init\n",
-                  "action=/opt/aws/bin/cfn-init -v ",
-                  "         --stack ", { "Ref" : "AWS::StackName" },
-                  "         --resource WebServer ",
-                  "         --configsets full_install ",
-                  "         --region ", { "Ref" : "AWS::Region" }, "\n",
-                  "runas=root\n"
-                ]]},
-                "mode"    : "000400",
-                "owner"   : "root",
-                "group"   : "root"
-              }
-            },
+                [Install]
+                WantedBy=multi-user.target
+              mode: '000400'
+              owner: root
+              group: root
+            /usr/lib/systemd/system/db-migrate.service:
+              content: |-
+                [Unit]
+                Description=Matreon migrate database
+                Requires=docker-compose-matreon.service
+                After=docker-compose-matreon.service
 
-            "services" : {
-              "sysvinit" : {  
-                "cfn-hup" : { "enabled" : "true", "ensureRunning" : "true",
-                              "files" : ["/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf"]}
-              }
-            }
-          },
+                [Service]
+                Restart=no
 
-          "install_docker": {
-            "files" : {
-              "/usr/lib/systemd/system/docker-compose-matreon.service" : {
-                "content" : { "Fn::Join" : ["\n", [
-                  "[Unit]",
-                  "Description=Matreon service with docker compose",
-                  "Requires=docker.service",
-                  "After=docker.service",
-                  "",
-                  "[Service]",
-                  "Restart=always",
-                  "",
-                  "WorkingDirectory=/usr/local/src/matreon",
-                  "EnvironmentFile=/matreon_data/.env",
-                  "",
-                  "# Remove old containers, images and volumes",
-                  "ExecStartPre=/usr/local/bin/docker-compose down -v",
-                  "ExecStartPre=/usr/local/bin/docker-compose rm -fv",
-                  "ExecStartPre=-/bin/bash -c 'docker volume ls -qf \"name=matreon_\" | xargs docker volume rm'",
-                  "ExecStartPre=-/bin/bash -c 'docker network ls -qf \"name=matreon_\" | xargs docker network rm'",
-                  "ExecStartPre=-/bin/bash -c 'docker ps -aqf \"name=matreon_*\" | xargs docker rm'",
-                  "",
-                  "# Compose up",
-                  "ExecStart=/usr/bin/docker-compose up",
-                  "",
-                  "# Compose down, remove containers and volumes",
-                  "ExecStop=/usr/bin/docker-compose down -v",
-                  "",
-                  "[Install]",
-                  "WantedBy=multi-user.target"
-                ]]},
-                "mode"    : "000400",
-                "owner"   : "root",
-                "group"   : "root"
-              },
-              "/usr/lib/systemd/system/db-migrate.service" : {
-                "content" : { "Fn::Join" : ["\n", [
-                  "[Unit]",
-                  "Description=Matreon migrate database",
-                  "Requires=docker-compose-matreon.service",
-                  "After=docker-compose-matreon.service",
-                  "",
-                  "[Service]",
-                  "Restart=no",
-                  "",
-                  "WorkingDirectory=/usr/local/src/matreon",
-                  "EnvironmentFile=/matreon_data/.env",
-                  "",
-                  "ExecStart=/usr/bin/docker-compose run web rake db:migrate",
-                  "",
-                  "[Install]",
-                  "WantedBy=multi-user.target"
-                ]]},
-                "mode"    : "000400",
-                "owner"   : "root",
-                "group"   : "root"
-              }
-            },
-            "commands": {
-              "00_upgrade_system": {
-                "command": "yum update -y"
-              },
-              "01_install_docker": {
-                "command": "yum install -y docker git"
-              },
-              "02_install_docker_compose": {
-                "command": {"Fn::Join" : ["", [
-                  "curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose &&",
-                  "chmod +x /usr/local/bin/docker-compose &&",
-                  "ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose &&",
-                  "chmod +x /usr/bin/docker-compose"
-                ]]}
-              },
-              "03_start_service": {
-                "command": "service docker start"
-              }
-            }
-          },
-          
-          "prepare_datadir": {
-            "commands": {
-              "01_create_datadir": {
-                "command": "mkdir /matreon_data"
-              },
-              "02_set_env": {
-                "command": { "Fn::Join" : ["", [
-                  "echo \"SECRET_KEY_BASE=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`\" >> /matreon_data/.env \n",
-                  "echo \"DEVISE_SECRET_KEY=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`\" >> /matreon_data/.env \n",
-                  "echo \"LIGHTNING_CHARGE_API_TOKEN=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`\" >> /matreon_data/.env \n",
-                  "echo \"HOSTNAME=", { "Ref" : "HostName" }, "\" >> /matreon_data/.env \n",
-                  "echo \"FROM_EMAIL=", { "Ref" : "FromEmail" }, "\" >> /matreon_data/.env \n",
-                  "echo \"BUGS_TO=", { "Ref" : "BugsEmail" }, "\" >> /matreon_data/.env \n",
-                  "echo \"SMTP_HOST=", { "Ref" : "SmtpHost" }, "\" >> /matreon_data/.env \n",
-                  "echo \"SMTP_PORT=", { "Ref" : "SmtpPort" }, "\" >> /matreon_data/.env \n",
-                  "echo \"SMTP_USERNAME=", { "Ref" : "SmtpUser" }, "\" >> /matreon_data/.env \n",
-                  "echo \"SMTP_PASSWORD=", { "Ref" : "SmtpPassword" }, "\" >> /matreon_data/.env \n",
-                  "echo \"NETWORK=", { "Ref" : "Network" }, "\" >> /matreon_data/.env \n",
-                  "echo \"PODCAST=", { "Ref" : "Podcast" }, "\" >> /matreon_data/.env \n",
-                  "echo \"PODCAST_TITLE=", { "Ref" : "PodcastTitle" }, "\" >> /matreon_data/.env \n",
-                  "echo \"PODCAST_URL=", { "Ref" : "PodcastUrl" }, "\" >> /matreon_data/.env \n",
-                  "echo \"PODCAST_IMAGE=", { "Ref" : "PodcastImage" }, "\" >> /matreon_data/.env \n",
-                  "echo \"DATADIR=/matreon_data", "\" >> /matreon_data/.env \n",
-                  "echo \"IP_ADDRESS=", { "Ref" : "IPAddress" }, "\" >> /matreon_data/.env\n",
-                  "source /matreon_data/.env"
-                ]]}
-              }
-            }
-          },
-          
-          "install_container_bitcoin": {
-            "commands": {
-              "01_configure_datadir": {
-                "command": "mkdir /matreon_data/bitcoin"
-              },
-              "02_clone_repo": {
-                "command": "git clone https://github.com/NicolasDorier/docker-bitcoin /usr/local/src/docker-bitcoin"
-              },
-              "03_docker_build": {
-                "command": "docker build /usr/local/src/docker-bitcoin/core/0.16.0 -t bitcoind:0.16.0"
-              }
-            }
-          },
-          
-          "install_container_lightning": {
-            "commands": {
-              "01_configure_datadir": {
-                "command": "mkdir /matreon_data/lightning"
-              },
-              "02_clone_repo": {
-                "command": "git clone https://github.com/cdecker/dockerfiles /usr/local/src/docker-lightning"
-              },
-              "03_docker_build": {
-                "command": "docker build /usr/local/src/docker-lightning/lightning/node -f /usr/local/src/docker-lightning/lightning/node/Dockerfile.master -t lightningd:latest"
-              }
-            }
-          },
-          
-          "install_container_charge": {
-            "commands": {
-              "01_configure_datadir": {
-                "command": "mkdir /matreon_data/charge"
-              },
-              "02_clone_repo": {
-                "command": "git clone https://github.com/Sjors/lightning-charge /usr/local/src/lightning-charge && cd /usr/local/src/lightning-charge && git checkout 2018/05/node-uri"
-              },
-              "03_docker_build": {
-                "command": "docker build /usr/local/src/lightning-charge -t charge:latest"
-              }
-            }
-          },
-          
-          "install_docker_compose_with_pg_and_rails": {
-            "commands": {
-              "01_make_db_dir": {
-                "command": "mkdir /matreon_data/pg"
-              },
-              "02_clone_repo": {
-                "command": "git clone https://github.com/Sjors/matreon.git /usr/local/src/matreon && cd /usr/local/src/matreon"
-              },
-              "03_build_rails_container": {
-                "command": "cd /usr/local/src/matreon && docker-compose build"
-              }
-            }
-          },
-          
-          "initial_blockchain_download": {
-            "commands": {
-              "01_create_ram_disk": {
-                "command": "sudo mkdir /mnt/ramdisk && mount -t tmpfs -o size=50000m tmpfs /mnt/ramdisk"
-              },
-              "02_start_bitcoind": {
-                "command": "cd /usr/local/src/matreon && set -a && source /matreon_data/.env && DATADIR=/mnt/ramdisk DBCACHE=10000 PRUNE=40000 docker-compose up -d bitcoind"
-              },
-              "03_wait_for_sync_prune_copy_stop": {
-                "command": "cd /usr/local/src/matreon && set -a && source /matreon_data/.env && ./wait_for_ibd.sh"
-              }
-            }
-          },
+                WorkingDirectory=/usr/local/src/matreon
+                EnvironmentFile=/matreon_data/.env
 
-          "prepare_matreon": {
-            "commands": {
-              "01_install_crontab": {
-                "command": { "Fn::Join" : ["", [
-                  "echo '0 * * * * root cd /usr/local/src/matreon && set -a && source /matreon_data/.env && docker-compose run web rake invoices:process' >> /tmp/crontab \n",
-                  "echo '0 * * * * root cd /usr/local/src/matreon && set -a && source /matreon_data/.env && docker-compose run web rake podcast:fetch' >> /tmp/crontab \n",
-                  "echo '' >> /tmp/crontab",
-                  "crontab /tmp/crontab"
-                ]]}
-              },
-              "02_start_docker_compose_service_after_reboot": {
-                "command": "systemctl enable docker-compose-matreon.service"
-              },
-              "03_run_db_migrate_after_reboot": {
-                "command": "systemctl enable db-migrate.service"
-              }
-            }
-          }
-        }
-      },
-      "Properties": {
-        "ImageId" : "ami-43eec3a8",
-        "InstanceType"   : "m5.4xlarge",
-        "BlockDeviceMappings" : [
-           {
-             "DeviceName" : "/dev/xvda",
-                "Ebs" : {
-                   "VolumeSize" : "25"
-                 }
-           }
-        ],
-        "SecurityGroups" : [ {"Ref" : "WebServerSecurityGroup"} ],
-        "KeyName"        : { "Ref" : "KeyName" },
-        "Tags" : [
-          {"Key" : "Name", "Value" : "Matreon"}
-        ],
-        "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
-          "#!/bin/bash -xe\n",
-          "yum update -y aws-cfn-bootstrap\n",
+                ExecStart=/usr/bin/docker-compose run web rake db:migrate
 
-          "/opt/aws/bin/cfn-init -v ",
-          "         --stack ", { "Ref" : "AWS::StackId" },
-          "         --resource WebServer ",
-          "         --configsets full_install ",
-          "         --region ", { "Ref" : "AWS::Region" }, "\n",
-
-          "/opt/aws/bin/cfn-signal -e $? ",
-          "         --stack ", { "Ref" : "AWS::StackId" },
-          "         --resource WebServer ",
-          "         --region ", { "Ref" : "AWS::Region" }, "\n"
-        ]]}}        
-      },
-      "CreationPolicy" : {
-        "ResourceSignal" : {
-          "Timeout" : "PT300M"
-        }
-      }
-    },
-    
-    "IPAddress" : {
-      "Type" : "AWS::EC2::EIP"
-    },
-    
-    "IPAssoc" : {
-      "Type" : "AWS::EC2::EIPAssociation",
-      "Properties" : {
-        "InstanceId" : { "Ref" : "WebServer" },
-        "EIP" : { "Ref" : "IPAddress" }
-      }
-    },
-    
-    "WebServerSecurityGroup" : {
-      "Type" : "AWS::EC2::SecurityGroup",
-      "Properties" : {
-        "GroupDescription" : "Enable SSH, Bitcoin P2P, Lightning P2P and Charge access",
-        "SecurityGroupIngress" : [
-          {"IpProtocol" : "tcp", "FromPort" : "8883", "ToPort" : "8883", "CidrIp" : "0.0.0.0/0"},
-          {"IpProtocol" : "tcp", "FromPort" : "18883", "ToPort" : "18883", "CidrIp" : "0.0.0.0/0"},
-          {"IpProtocol" : "tcp", "FromPort" : "9735", "ToPort" : "9735", "CidrIp" : "0.0.0.0/0"},
-          {"IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : "0.0.0.0/0"},
-          {"IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : { "Ref" : "SSHLocation"}}
-        ]
-      }      
-    }          
-  },
-  
-  "Outputs" : {
-    "WebsiteURL" : {
-      "Value" : { "Fn::Join" : ["", ["http://", { "Fn::GetAtt" : [ "WebServer", "PublicDnsName" ]}, "/" ]] },
-      "Description" : "URL for your Matreon"
-    }
-  }
-}
+                [Install]
+                WantedBy=multi-user.target
+              mode: '000400'
+              owner: root
+              group: root
+          commands:
+            00_upgrade_system:
+              command: yum update -y
+            01_install_docker:
+              command: yum install -y docker git
+            02_install_docker_compose:
+              command: curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-$(uname
+                -s)-$(uname -m) -o /usr/local/bin/docker-compose &&chmod +x /usr/local/bin/docker-compose
+                &&ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose &&chmod
+                +x /usr/bin/docker-compose
+            03_start_service:
+              command: service docker start
+        prepare_datadir:
+          files:
+            /matreon_data/.env:
+              content: !Sub |
+                HOSTNAME=${HostName}
+                FROM_EMAIL=${FromEmail}
+                BUGS_TO=${BugsEmail}
+                SMTP_HOST=${SmtpHost}
+                SMTP_PORT=${SmtpPort}
+                SMTP_USERNAME=${SmtpUser}
+                SMTP_PASSWORD=${SmtpPassword}
+                NETWORK=${Network}
+                PODCAST=${Podcast}
+                PODCAST_TITLE=${PodcastTitle}
+                PODCAST_URL=${PodcastUrl}
+                PODCAST_IMAGE=${PodcastImage}
+                DATADIR=/matreon_data
+                IP_ADDRESS=${IPAddress}
+                
+          commands:
+            01_set_secret_key_base:
+              command: echo "SECRET_KEY_BASE=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /matreon_data/.env
+            02_set_devise_secret_key_key:
+              command: echo "DEVISE_SECRET_KEY=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /matreon_data/.env
+            03_set_lightning_charge_api_token:
+              command: echo "LIGHTNING_CHARGE_API_TOKEN=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /matreon_data/.env
+              
+        install_container_bitcoin:
+          commands:
+            01_configure_datadir:
+              command: mkdir /matreon_data/bitcoin
+            02_clone_repo:
+              command: git clone https://github.com/NicolasDorier/docker-bitcoin /usr/local/src/docker-bitcoin
+            03_docker_build:
+              command: docker build /usr/local/src/docker-bitcoin/core/0.16.0 -t bitcoind:0.16.0
+        install_container_lightning:
+          commands:
+            01_configure_datadir:
+              command: mkdir /matreon_data/lightning
+            02_clone_repo:
+              command: git clone https://github.com/cdecker/dockerfiles /usr/local/src/docker-lightning
+            03_docker_build:
+              command: docker build /usr/local/src/docker-lightning/lightning/node
+                -f /usr/local/src/docker-lightning/lightning/node/Dockerfile.master
+                -t lightningd:latest
+        install_container_charge:
+          commands:
+            01_configure_datadir:
+              command: mkdir /matreon_data/charge
+            02_clone_repo:
+              command: git clone https://github.com/Sjors/lightning-charge /usr/local/src/lightning-charge
+                && cd /usr/local/src/lightning-charge && git checkout 2018/05/node-uri
+            03_docker_build:
+              command: docker build /usr/local/src/lightning-charge -t charge:latest
+        install_docker_compose_with_pg_and_rails:
+          commands:
+            01_make_db_dir:
+              command: mkdir /matreon_data/pg
+            02_clone_repo:
+              command: git clone https://github.com/Sjors/matreon.git /usr/local/src/matreon
+                && cd /usr/local/src/matreon
+            03_build_rails_container:
+              command: cd /usr/local/src/matreon && docker-compose build
+        initial_blockchain_download:
+          commands:
+            01_create_ram_disk:
+              command: sudo mkdir /mnt/ramdisk && mount -t tmpfs -o size=50000m tmpfs
+                /mnt/ramdisk
+            02_start_bitcoind:
+              command: cd /usr/local/src/matreon && set -a && source /matreon_data/.env
+                && DATADIR=/mnt/ramdisk DBCACHE=10000 PRUNE=40000 docker-compose up
+                -d bitcoind
+            03_wait_for_sync_prune_copy_stop:
+              command: cd /usr/local/src/matreon && set -a && source /matreon_data/.env
+                && ./wait_for_ibd.sh
+        prepare_matreon:
+          commands:
+            01_install_crontab:
+              command: "echo '0 * * * * root cd /usr/local/src/matreon && set -a &&\
+                \ source /matreon_data/.env && docker-compose run web rake invoices:process'\
+                \ >> /tmp/crontab \necho '0 * * * * root cd /usr/local/src/matreon\
+                \ && set -a && source /matreon_data/.env && docker-compose run web\
+                \ rake podcast:fetch' >> /tmp/crontab \necho '' >> /tmp/crontabcrontab\
+                \ /tmp/crontab"
+            02_start_docker_compose_service_after_reboot:
+              command: systemctl enable docker-compose-matreon.service
+            03_run_db_migrate_after_reboot:
+              command: systemctl enable db-migrate.service
+    Properties:
+      ImageId: ami-43eec3a8
+      InstanceType: m5.4xlarge
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: '25'
+      SecurityGroups:
+        - !Ref 'WebServerSecurityGroup'
+      KeyName: !Ref 'KeyName'
+      Tags:
+        - Key: Name
+          Value: Matreon
+      UserData: !Base64
+        Fn::Sub: |
+          #!/bin/bash -xe
+          yum update -y aws-cfn-bootstrap
+          /opt/aws/bin/cfn-init -v          --stack ${AWS::StackId}         --resource WebServer          --configsets full_install          --region ${AWS::Region}
+          /opt/aws/bin/cfn-signal -e $?          --stack ${AWS::StackId}         --resource WebServer          --region ${AWS::Region}
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT300M
+  IPAddress:
+    Type: AWS::EC2::EIP
+  IPAssoc:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref 'WebServer'
+      EIP: !Ref 'IPAddress'
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH, Bitcoin P2P, Lightning P2P and Charge access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '8883'
+          ToPort: '8883'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '18883'
+          ToPort: '18883'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '9735'
+          ToPort: '9735'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: !Ref 'SSHLocation'
+Outputs:
+  WebsiteURL:
+    Value: !Sub 'http://${WebServer.PublicDnsName}/'
+    Description: URL for your Matreon
