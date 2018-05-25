@@ -239,7 +239,7 @@ Resources:
             /tmp/wait_for_ibd.sh:
               content: !Sub |-
                 #!/bin/bash
-                export OPTS="-conf=/etc/bitcoin/bitcoin.conf -datadir=/mnt/ramdisk/bitcoin"
+                export OPTS="-conf=/etc/bitcoin/bitcoin.conf -datadir=/mnt/ssd/bitcoin"
                 while sleep 60
                 do
                   if bitcoin-cli $OPTS getblocktemplate; then
@@ -255,7 +255,7 @@ Resources:
                     break
                   fi
                 done
-                mv /mnt/ramdisk/bitcoin /home/bitcoin/.bitcoin
+                mv /mnt/ssd/bitcoin /home/bitcoin/.bitcoin
                 
               owner: bitcoin
               group: bitcoin
@@ -429,12 +429,15 @@ Resources:
               command: cd /usr/local/src/matreon && docker-compose build
         initial_blockchain_download:
           commands:
-            01_create_ram_disk:
-              command: mkdir /mnt/ramdisk && mount -t tmpfs -o size=55000m tmpfs
-                /mnt/ramdisk && mkdir /mnt/ramdisk/bitcoin && chown -R bitcoin:bitcoin /mnt/ramdisk/bitcoin
-            02_start_bitcoind:
-              command: su - bitcoin --command "bitcoind -conf=/etc/bitcoin/bitcoin.conf -datadir=/mnt/ramdisk/bitcoin -dbcache=4000 -prune=50000 -daemon"
-            03_wait_for_sync_prune_copy_stop:
+            01_format_ssd:
+              command: mkfs.ext4 -E nodiscard /dev/nvme0n1
+            02_mount_ssd:
+              command: mkdir /mnt/ssd && mount -o discard /dev/nvme0n1 /mnt/ssd
+            03_add_bitcoin_dir:
+              command: mkdir /mnt/ssd/bitcoin && chown -R bitcoin:bitcoin /mnt/ssd/bitcoin
+            04_start_bitcoind:
+              command: su - bitcoin --command "bitcoind -conf=/etc/bitcoin/bitcoin.conf -datadir=/mnt/ssd/bitcoin -dbcache=20000 -prune=1 -daemon"
+            05_wait_for_sync_prune_copy_stop:
               command: su - bitcoin --command "/tmp/wait_for_ibd.sh"
         prepare_matreon:
           commands:
@@ -462,7 +465,7 @@ Resources:
 
     Properties:
       ImageId: ami-43eec3a8
-      InstanceType: m5.4xlarge
+      InstanceType: i3.2xlarge
       BlockDeviceMappings:
         - DeviceName: /dev/xvda
           Ebs:
@@ -481,7 +484,7 @@ Resources:
           /opt/aws/bin/cfn-signal -e $?          --stack ${AWS::StackId}         --resource WebServer          --region ${AWS::Region}
     CreationPolicy:
       ResourceSignal:
-        Timeout: PT600M
+        Timeout: PT360M
   IPAddress:
     Type: AWS::EC2::EIP
   IPAssoc:

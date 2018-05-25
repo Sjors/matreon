@@ -11,7 +11,7 @@ This is currently quite brittle and not very secure.
 
 Install the Amazon CloudFormation template by downloading [Matreon.Template](https://raw.githubusercontent.com/Sjors/matreon/master/Matreon.Template) and then uploading it on the [CloudFormation stack creation page](https://eu-central-1.console.aws.amazon.com/cloudformation/home?region=eu-central-1&stackName=Matreon#/stacks/new).
 
-Fill out the form, click next a few times and then wait while it installs applications and downloads the blockchain. After about half an hour on testnet or ten hours on mainnet the status should change from `CREATE_IN_PROGRESS` to `CREATE_COMPLETE`.
+Fill out the form, click next a few times and then wait while it installs applications and downloads the blockchain. After about half an hour on testnet or four hours on mainnet the status should change from `CREATE_IN_PROGRESS` to `CREATE_COMPLETE`.
 
 In order to download the blockchain in a reasonable amount of time, a high performance machine was used. Similar to how a sea squirt eats its own brain when it finds a place to stay and no longer needs to swim, you should downgrade to a cheaper machine once the blockchain has been downloaded.
 
