@@ -29,6 +29,12 @@ Metadata:
           - PodcastTitle
           - PodcastImage
           - PodcastUrl
+      - Label:
+          default: Developer
+        Parameters:
+          - Repository
+          - Branch
+
 Parameters:
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
@@ -106,6 +112,18 @@ Parameters:
     Type: String
     MinLength: '0'
     MaxLength: '255'
+  GitURL:
+    Description: Git repository URL
+    Type: String
+    MinLength: '0'
+    MaxLength: '255'
+    Default: 'https://github.com/Sjors/matreon.git'
+  GitBranch:
+    Description: Git branch
+    Type: String
+    MinLength: '0'
+    MaxLength: '255'
+    Default: 'master'
 Conditions:
   NetworkBitcoin: !Equals [!Ref 'Network', 'bitcoin']
   NetworkTestnet: !Equals [!Ref 'Network', 'testnet']
@@ -179,7 +197,8 @@ Resources:
             02_basic_tools:
               command: yum install git jq -y
             10_clone_repo:
-              command: git clone https://github.com/Sjors/matreon.git /usr/local/src/matreon
+              command: !Sub
+                git clone ${GitURL} /usr/local/src/matreon && cd /usr/local/src/matreon && git checkout ${GitBranch}
             20_add_user_bitcoin:
               command: groupadd -r bitcoin && useradd -r -m -g bitcoin bitcoin
             30_copy_systemd_files:
