@@ -1,0 +1,4 @@
+log-level=debug
+log-file=debug.log
+bitcoin-datadir=/home/bitcoin/.bitcoin
+bind-addr=0.0.0.0
