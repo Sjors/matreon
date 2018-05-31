@@ -196,6 +196,12 @@ Resources:
               command: yum update -y
             02_basic_tools:
               command: yum install git jq -y
+            03_format_magnetic_volume:
+              command: mkfs -t ext4 /dev/xvdb
+            04_mount_magnetic_volume:
+              command: mkdir /mnt/magnetic
+                      && echo "/dev/xvdb /mnt/magnetic ext4 defaults,nofail 0 2" >> /etc/fstab
+                      && mount -a
             10_clone_repo:
               command: !Sub
                 git clone ${GitURL} /usr/local/src/matreon && cd /usr/local/src/matreon && git checkout ${GitBranch}
@@ -212,6 +218,20 @@ Resources:
                   - NetworkBitcoin
                   - echo
                   - echo "testnet=1" >> /etc/bitcoin/bitcoin.conf
+            42_add_bitcoin_dir:
+              command: mkdir /home/bitcoin/.bitcoin && chown -R bitcoin:bitcoin /home/bitcoin/.bitcoin
+            43_add_blocks_dir:
+              command: 
+                !If 
+                  - NetworkBitcoin
+                  - su - bitcoin --command "mkdir -p ~/.bitcoin/blocks-index"
+                    && mkdir /mnt/magnetic/blocks && chown -R bitcoin:bitcoin /mnt/magnetic/blocks
+                    && su - bitcoin --command "ln -s /home/bitcoin/.bitcoin/blocks-index /mnt/magnetic/blocks/index" 
+                    && su - bitcoin --command "ln -s /mnt/magnetic/blocks /home/bitcoin/.bitcoin/blocks"
+                  - su - bitcoin --command "mkdir -p ~/.bitcoin/testnet3/blocks-index"
+                    && mkdir /mnt/magnetic/blocks-testnet3 && chown -R bitcoin:bitcoin /mnt/magnetic/blocks-testnet3
+                    && su - bitcoin --command "ln -s /home/bitcoin/.bitcoin/testnet3/blocks-index /mnt/magnetic/blocks-testnet3/index" 
+                    && su - bitcoin --command "ln -s /mnt/magnetic/blocks-testnet3 /home/bitcoin/.bitcoin/testnet3/blocks"
             50_copy_lightnind_files:
               command: mkdir /home/bitcoin/.lightning && cp /usr/local/src/matreon/vendor/lightning/config /home/bitcoin/.lightning
                        && chmod 444 /home/bitcoin/.lightning/config
@@ -284,8 +304,6 @@ Resources:
               command: mkfs.ext4 -E nodiscard /dev/nvme0n1
             02_mount_ssd:
               command: mkdir /mnt/ssd && mount -o discard /dev/nvme0n1 /mnt/ssd
-            03_add_bitcoin_dir:
-              command: mkdir /home/bitcoin/.bitcoin && chown -R bitcoin:bitcoin /home/bitcoin/.bitcoin
             04_add_ssd_bitcoin_dir:
               command: mkdir /mnt/ssd/bitcoin && chown -R bitcoin:bitcoin /mnt/ssd/bitcoin
             05_start_bitcoind:
@@ -293,8 +311,15 @@ Resources:
             06_wait_for_sync_prune_stop:
               command: su - bitcoin --command "/usr/local/src/matreon/vendor/bitcoin/wait_for_ibd.sh"
             07_copy_pruned_chain:
-              command: su - bitcoin --command "mv /mnt/ssd/bitcoin/* /home/bitcoin/.bitcoin"
-  
+              command: 
+                !If 
+                  - NetworkBitcoin
+                  -    su - bitcoin --command "mv /mnt/ssd/bitcoin/blocks/*.dat /home/bitcoin/.bitcoin/blocks"
+                    && su - bitcoin --command "mv /mnt/ssd/bitcoin/blocks/index/* /home/bitcoin/.bitcoin/blocks/index"
+                    && su - bitcoin --command "mv /mnt/ssd/bitcoin/chainstate /home/bitcoin/.bitcoin"
+                  -    su - bitcoin --command "mv /mnt/ssd/bitcoin/testnet3/blocks/*.dat /home/bitcoin/.bitcoin/testnet3/blocks"
+                    && su - bitcoin --command "mv /mnt/ssd/bitcoin/testnet3/blocks/index/* /home/bitcoin/.bitcoin/testnet3/blocks/index"
+                    && su - bitcoin --command "mv /mnt/ssd/bitcoin/testnet3/chainstate /home/bitcoin/.bitcoin/testnet3"
         prepare_matreon:
           commands:
             01_install_crontab:
@@ -327,6 +352,10 @@ Resources:
           Ebs:
             VolumeSize: '25'
             VolumeType: 'gp2'
+        - DeviceName: /dev/xvdb
+          Ebs:
+            VolumeSize: '40'
+            VolumeType: 'standard'
       SecurityGroups:
         - !Ref 'WebServerSecurityGroup'
       KeyName: !Ref 'KeyName'

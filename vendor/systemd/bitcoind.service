@@ -3,7 +3,7 @@ Description=Bitcoin daemon
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/bitcoind -prune=2000 -dbcache=300 -daemon \
+ExecStart=/usr/local/bin/bitcoind -prune=38000 -dbcache=300 -daemon \
           -conf=/etc/bitcoin/bitcoin.conf -pid=/run/bitcoind/bitcoind.pid
 
 # Creates /run/bitcoind owned by bitcoin

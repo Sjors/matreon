@@ -4,8 +4,8 @@ export OPTS="-conf=/etc/bitcoin/bitcoin.conf -datadir=/mnt/ssd/bitcoin"
 while sleep 60
 do
   if bitcoin-cli $OPTS getblockchaininfo  | jq -e '.initialblockdownload==false'; then
-    export BLOCK_COUNT=`bitcoin-cli $OPTS getblockcount`
-    bitcoin-cli $OPTS pruneblockchain $BLOCK_COUNT
+    # Prune to slightly before (a lot on testnet) the first Lightning block:
+    bitcoin-cli $OPTS pruneblockchain 504500
     bitcoin-cli $OPTS stop
     while sleep 10 
     do # Wait for shutdown
