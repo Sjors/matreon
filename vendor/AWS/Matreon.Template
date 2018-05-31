@@ -326,6 +326,7 @@ Resources:
         - DeviceName: /dev/xvda
           Ebs:
             VolumeSize: '25'
+            VolumeType: 'gp2'
       SecurityGroups:
         - !Ref 'WebServerSecurityGroup'
       KeyName: !Ref 'KeyName'
