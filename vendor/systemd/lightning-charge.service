@@ -1,0 +1,34 @@
+[Unit]
+Description=Lightning charge
+Requires=lightningd.service
+After=lightningd.service
+
+[Service]
+EnvironmentFile=/home/charge/.env
+ExecStart=/home/charge/.npm-global/bin/charged --ln-path /run/lightningd --db-path /home/charge/charge.db
+
+# Creates /run/charge owned by charge
+RuntimeDirectory=charge
+User=charge
+Type=simple
+Restart=on-failure
+
+# Hardening measures
+####################
+
+# Provide a private /tmp and /var/tmp.
+PrivateTmp=true
+
+# Mount /usr, /boot/ and /etc read-only for the process.
+ProtectSystem=full
+
+# Disallow the process and all of its children to gain
+# new privileges through execve().
+NoNewPrivileges=true
+
+# Use a new /dev namespace only populated with API pseudo devices
+# such as /dev/null, /dev/zero and /dev/random.
+PrivateDevices=true
+
+[Install]
+WantedBy=multi-user.target

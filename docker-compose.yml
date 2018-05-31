@@ -1,19 +1,6 @@
 version: "3"
 
 services:
-
-  charge:
-    restart: always
-    environment:
-      - API_TOKEN=${LIGHTNING_CHARGE_API_TOKEN}
-    image: charge:latest
-    expose:
-      - "9112"
-    ports:
-      - "9112:9112"
-    volumes:
-      - ${DATADIR}/charge:/data
-      - ${DATADIR}/lightning:/etc/lightning/
       
   db:
     image: postgres

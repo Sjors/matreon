@@ -54,9 +54,9 @@ class Invoice < ApplicationRecord
 
   def invoice_uri(lightning_charge_id=nil)
     if lightning_charge_id.nil?
-      return URI.parse("#{ ENV["LIGHTNING_CHARGE_URL"] || "http://charge:9112" }/invoice")
+      return URI.parse("#{ ENV["LIGHTNING_CHARGE_URL"] || "http://localhost:9112" }/invoice")
     else
-      return URI.parse("#{ ENV["LIGHTNING_CHARGE_URL"] || "http://charge:9112" }/invoice/#{ lightning_charge_id }")
+      return URI.parse("#{ ENV["LIGHTNING_CHARGE_URL"] || "http://localhost:9112" }/invoice/#{ lightning_charge_id }")
     end
   end
 

@@ -139,7 +139,7 @@ Resources:
             - install_docker
             - install_bitcoind
             - install_lightningd
-            - install_container_charge
+            - install_lightning_charge
             - install_docker_compose_with_pg_and_rails
             - initial_blockchain_download
             - prepare_matreon
@@ -202,6 +202,10 @@ Resources:
               command: mkdir /mnt/magnetic
                       && echo "/dev/xvdb /mnt/magnetic ext4 defaults,nofail 0 2" >> /etc/fstab
                       && mount -a
+            05_add_npm_repo:
+              command: curl --silent --location https://rpm.nodesource.com/setup_8.x | bash -
+            06_install_npm:
+              command: yum -y install nodejs
             10_clone_repo:
               command: !Sub
                 git clone ${GitURL} /usr/local/src/matreon && cd /usr/local/src/matreon && git checkout ${GitBranch}
@@ -234,22 +238,32 @@ Resources:
                     && su - bitcoin --command "ln -s /mnt/magnetic/blocks-testnet3 /home/bitcoin/.bitcoin/testnet3/blocks"
             50_copy_lightnind_files:
               command: mkdir /home/bitcoin/.lightning && cp /usr/local/src/matreon/vendor/lightning/config /home/bitcoin/.lightning
-                       && chmod 444 /home/bitcoin/.lightning/config
+                       && chmod 444 /home/bitcoin/.lightning/config                        
             51_set_lightning_network:
               command:
                 !If 
                   - NetworkBitcoin
                   - echo "network=bitcoin" >> /home/bitcoin/.lightning/config
                   - echo "network=testnet" >> /home/bitcoin/.lightning/config
-            51_set_lightning_announce_addr:
+            52_set_lightning_announce_addr:
               command: !Sub 
                 echo "announce-addr=${IPAddress}" >> /home/bitcoin/.lightning/config
+            53_create_lightningrpc_group:
+              command: groupadd lightningrpc && sudo usermod -a -G lightningrpc bitcoin && mkdir /etc/lightning && chown bitcoin:lightningrpc /etc/lightning
+            60_add_user_charge:
+              command: groupadd -r charge && useradd -r -m -g charge charge
+            61_add_env_file:
+              command: touch /home/charge/.env && chown charge:charge /home/charge/.env && chmod 600 /home/charge/.env
+            62_add_charged_to_lightning_rpc_group:
+              command:  usermod -a -G lightningrpc charge
             90_set_secret_key_base:
               command: echo "SECRET_KEY_BASE=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /matreon_data/.env
             91_set_devise_secret_key_key:
               command: echo "DEVISE_SECRET_KEY=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /matreon_data/.env
             92_set_lightning_charge_api_token:
-              command: echo "LIGHTNING_CHARGE_API_TOKEN=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /matreon_data/.env
+              command: export API_TOKEN=`hexdump -n 64 -e '16/4 "%08x" 1 "\n"' /dev/random`
+                       && echo "LIGHTNING_CHARGE_API_TOKEN=$API_TOKEN" >> /matreon_data/.env
+                       && echo "API_TOKEN=$API_TOKEN" >> /home/charge/.env
         
         install_docker:
           commands:
@@ -279,17 +293,16 @@ Resources:
             04_fix_permissions:
               command: chown -R bitcoin:bitcoin /home/bitcoin/.lightning
 
-        install_container_charge:
+        install_lightning_charge:
           commands:
-            01_configure_datadir:
-              command: mkdir /matreon_data/charge
-            02_add_symlink:
-              command: ln -s /home/bitcoin/.lightning /matreon_data/lightning
-            03_clone_repo:
-              command: git clone https://github.com/Sjors/lightning-charge /usr/local/src/lightning-charge
-                && cd /usr/local/src/lightning-charge && git checkout 2018/05/node-uri
-            04_docker_build:
-              command: docker build /usr/local/src/lightning-charge -t charge:latest
+            01_allow_global_npm_packages:
+              command:    su - charge --command "mkdir ~/.npm-global && npm config set prefix '~/.npm-global'"
+                       && su - charge --command "echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc"
+            02_clone_repo:
+              command:    su - charge --command  "git clone https://github.com/Sjors/lightning-charge"
+                       && su - charge --command  "cd lightning-charge && git checkout 2018/05/node-uri"
+            03_npm_install:
+              command:    su - charge --command "cd lightning-charge && npm link"
 
         install_docker_compose_with_pg_and_rails:
           commands:
@@ -333,6 +346,8 @@ Resources:
               command: systemctl enable bitcoind.service
             03_start_lightningd_service_after_reboot:
               command: systemctl enable lightningd.service
+            04_start_lightning_charge_service_after_reboot:
+              command: systemctl enable lightning-charge.service
             10_start_docker_after_reboot:
               command: systemctl enable docker
             11_start_docker_compose_service_after_reboot:

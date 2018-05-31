@@ -3,7 +3,11 @@ Description=Lightning daemon
 After=bitcoind.service
 
 [Service]
-ExecStart=/usr/local/bin/lightningd --daemon --pid-file=/run/lightningd/lightningd.pid
+ExecStart=/usr/local/bin/lightningd --daemon --pid-file=/run/lightningd/lightningd.pid --rpc-file=/run/lightningd/lightning-rpc
+
+# Grant lightningrpc group full access to RPC (should have reduced privileges once possible) 
+ExecStartPost=/bin/chmod g+rw /run/lightningd/lightning-rpc
+ExecStartPost=/bin/chgrp lightningrpc /run/lightningd/lightning-rpc
 
 # Creates /run/lightningd owned by bitcoin
 RuntimeDirectory=lightningd

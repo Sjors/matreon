@@ -27,7 +27,7 @@ To monitor logs of the docker containers: `journalctl -u docker-compose-matreon 
 
 This [blog post](https://medium.com/provoost-on-crypto/bitcoin-core-lightning-rails-on-aws-ad3bd45b11e0) explains the steps in more detail.
 
-## Deploy elsewhere using Docker
+## Deploy elsewhere
 
 Install [Docker](https://docs.docker.com/install/).
 
@@ -35,15 +35,12 @@ Create a directory to store the blockchain, wallet info, etc:
 
 ```sh
 mkdir matreon-vol
-mkdir matreon-vol/lightning
-mkdir matreon-vol/charge
 mkdir matreon-vol/pg
 ```
 
 We use Docker Compose to combine a number of containers. Hardcoding a [Docker image checksum](https://docs.docker.com/engine/security/trust/content_trust/#content-trust-operations-and-keys) doesn't prove how the image was built, so to minimize trust, we have to build the containers locally.
 
-However for performance critical stuff like Bitcoin Core, it's better to just install
-these manually.
+If you have Lightning Charge installed elsewhere, you can skip Bitcoin Core, C-Lightning and Lightning Charge. You'll need to pass `LIGHTNING_CHARGE_URL` into the Rails app.
 
 ### Bitcoin Core
 
@@ -62,11 +59,19 @@ disablewallet=1
 
 See [installation instructions](https://github.com/ElementsProject/lightning/blob/master/doc/INSTALL.md).
 
-### Container 3 - Lightning Charge
+### Lightning Charge
+
+See [installation instructions](https://github.com/ElementsProject/lightning-charge#getting-started).
+
+Generate a random API token: `hexdump -n 64 -e '16/4 "%08x" 1 "\n"' /dev/random`.
+
+Run using `charged --API-TOKEN=...`.
+
+To run as a service, uncomment `Environment=LIGHTNING_CHARGE_API_TOKEN=...` in `lightning-charge.service` and
 
 ```sh
-git clone https://github.com/ElementsProject/lightning-charge
-docker build lightning-charge -t charge:latest
+systemctl enable lightning-charge.service
+systemctl start lightning-charge.service
 ```
 
 ### Container 4 - Postgres
