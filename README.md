@@ -5,11 +5,13 @@ Current status: extremely experimental!
 
 Live instance: [matreon.sprovoost.nl](https://matreon.sprovoost.nl/)
 
-## Deploy to AWS using Docker
+## Deploy to AWS
 
 This is currently quite brittle and not very secure.
 
-Install the Amazon CloudFormation template by downloading [Matreon.Template](https://raw.githubusercontent.com/Sjors/matreon/master/vendor/AWS/Matreon.Template) and then uploading it on the [CloudFormation stack creation page](https://eu-central-1.console.aws.amazon.com/cloudformation/home?region=eu-central-1&stackName=Matreon#/stacks/new).
+Deploy latest release: [![Matreon.Template](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/images/cloudformation-launch-stack-button.png)](https://eu-central-1.console.aws.amazon.com/cloudformation/home?region=eu-central-1#/stacks/new?stackName=Matreon&templateURL=https:%2F%2Fs3.eu-central-1.amazonaws.com%2Fmatreon%2FMatreon.Template)
+
+Or install the Amazon CloudFormation template by downloading [Matreon.Template](https://raw.githubusercontent.com/Sjors/matreon/master/vendor/AWS/Matreon.Template) and then uploading it on the [CloudFormation stack creation page](https://eu-central-1.console.aws.amazon.com/cloudformation/home?region=eu-central-1&stackName=Matreon#/stacks/new).
 
 Fill out the form, click next a few times and then wait while it installs applications and downloads the blockchain. After about half an hour on testnet or four hours on mainnet the status should change from `CREATE_IN_PROGRESS` to `CREATE_COMPLETE`.
 
