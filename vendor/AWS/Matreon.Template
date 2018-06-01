@@ -173,6 +173,7 @@ Resources:
                   - /etc/cfn/hooks.d/cfn-auto-reloader.conf
         
         configure_system:
+
           files:
             /matreon_data/.env:
               content: !Sub |
@@ -256,6 +257,20 @@ Resources:
               command: touch /home/charge/.env && chown charge:charge /home/charge/.env && chmod 600 /home/charge/.env
             62_add_charged_to_lightning_rpc_group:
               command:  usermod -a -G lightningrpc charge
+            70__install_postgress:
+              command: yum install -y https://download.postgresql.org/pub/repos/yum/10/redhat/rhel-7-x86_64/pgdg-redhat10-10-2.noarch.rpm
+                       && sed -i "s/rhel-\$releasever-\$basearch/rhel-latest-x86_64/g" "/etc/yum.repos.d/pgdg-10-redhat.repo"
+                       && yum install -y postgresql10-devel postgresql10-server
+            71_init_postgres:
+              command: su - postgres --command "/usr/pgsql-10/bin/initdb -D /var/lib/pgsql/10/data"
+                       && systemctl enable postgresql-10.service
+            74_start_postgres:
+              commadn: systemctl start postgresql-10.service
+            75_add_user_matreon:
+              command: groupadd -r matreon && useradd -r -m -g matreon matreon
+            76_create_db_for_matreon:
+              command: su - postgres --command "createuser matreon && createdb -O matreon matreon"
+            
             90_set_secret_key_base:
               command: echo "SECRET_KEY_BASE=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /matreon_data/.env
             91_set_devise_secret_key_key:

@@ -2,11 +2,6 @@ version: "3"
 
 services:
       
-  db:
-    image: postgres
-    volumes:
-      - ${DATADIR}/pg:/var/lib/postgresql/data
-      
   web:
     build: .
     environment:
@@ -18,9 +13,7 @@ services:
       - HOSTNAME=${HOSTNAME}
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
       - DEVISE_SECRET_KEY=${DEVISE_SECRET_KEY}
-      - DATABASE_URL=postgres://postgres@db:5432
+      - DATABASE_URL=postgres://matreon@localhost:5432
       - LIGHTNING_CHARGE_API_TOKEN=${LIGHTNING_CHARGE_API_TOKEN}
     ports:
       - "80:3000"
-    depends_on:
-      - db
