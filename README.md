@@ -13,6 +13,8 @@ Deploy latest release: [![Matreon.Template](https://docs.aws.amazon.com/AWSCloud
 
 Or install the Amazon CloudFormation template by downloading [Matreon.Template](https://raw.githubusercontent.com/Sjors/matreon/master/vendor/AWS/Matreon.Template) and then uploading it on the [CloudFormation stack creation page](https://eu-central-1.console.aws.amazon.com/cloudformation/home?region=eu-central-1&stackName=Matreon#/stacks/new).
 
+Alternatively you can also [deploy programatically](/vendor/AWS/README.md#deploy).
+
 Fill out the form, click next a few times and then wait while it installs applications and downloads the blockchain. After about half an hour on testnet or four hours on mainnet the status should change from `CREATE_IN_PROGRESS` to `CREATE_COMPLETE`.
 
 In order to download the blockchain in a reasonable amount of time, a high performance machine was used. Similar to how a sea squirt eats its own brain when it finds a place to stay and no longer needs to swim, you should downgrade to a cheaper machine once the blockchain has been downloaded.
@@ -28,6 +30,7 @@ This [blog post](https://medium.com/provoost-on-crypto/bitcoin-core-lightning-ra
 ## Deploy elsewhere
 
 If you have Lightning Charge installed elsewhere, you can skip Bitcoin Core, C-Lightning and Lightning Charge. You'll need to put `LIGHTNING_CHARGE_URL=` into the Rails app.
+
 
 ### Bitcoin Core
 

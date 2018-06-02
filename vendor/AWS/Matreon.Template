@@ -100,16 +100,19 @@ Parameters:
   PodcastTitle:
     Description: Podcast title
     Type: String
+    Default: ''
     MinLength: '0'
     MaxLength: '100'
   PodcastImage:
     Description: Podcast image URL
     Type: String
+    Default: ''
     MinLength: '0'
     MaxLength: '255'
   PodcastUrl:
     Description: Existing podcast RSS feed
     Type: String
+    Default: ''
     MinLength: '0'
     MaxLength: '255'
   GitURL:
