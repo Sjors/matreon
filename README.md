@@ -23,24 +23,11 @@ The machine state should be `stopped`, but if it isn't click on the Actions butt
 
 Once it's stopped, click on the Actions button -> Instance Settings -> Change nstance type and choose `t2.small`. Finally, start the instance. A few minutes later your Matreon should be ready to go!
 
-To monitor logs of the docker containers: `journalctl -u docker-compose-matreon -f`
-
 This [blog post](https://medium.com/provoost-on-crypto/bitcoin-core-lightning-rails-on-aws-ad3bd45b11e0) explains the steps in more detail.
 
 ## Deploy elsewhere
 
-Install [Docker](https://docs.docker.com/install/).
-
-Create a directory to store the blockchain, wallet info, etc:
-
-```sh
-mkdir matreon-vol
-mkdir matreon-vol/pg
-```
-
-We use Docker Compose to combine a number of containers. Hardcoding a [Docker image checksum](https://docs.docker.com/engine/security/trust/content_trust/#content-trust-operations-and-keys) doesn't prove how the image was built, so to minimize trust, we have to build the containers locally.
-
-If you have Lightning Charge installed elsewhere, you can skip Bitcoin Core, C-Lightning and Lightning Charge. You'll need to pass `LIGHTNING_CHARGE_URL` into the Rails app.
+If you have Lightning Charge installed elsewhere, you can skip Bitcoin Core, C-Lightning and Lightning Charge. You'll need to put `LIGHTNING_CHARGE_URL=` into the Rails app.
 
 ### Bitcoin Core
 
@@ -74,61 +61,61 @@ systemctl enable lightning-charge.service
 systemctl start lightning-charge.service
 ```
 
-### Container 4 - Postgres
+### Postgres
 
-We're trusting the upstream image for now.
 
-### Container 5 - Rails & Matreon
+### Rails
+
+You'll need NodeJS and Yarn.
 
 ```sh
 git clone https://github.com/Sjors/matreon.git
+cd matreon
+bundle install --without development:test
+yarn install
 ```
 
-Once the container is running (see below), you can open a Rails console:
+Create a `.env` file with:
 
-```sh
-docker-compose run web rails console
+```
+NETWORK=testnet # or "bitcoin" for mainnet
+LIGHTNING_CHARGE_API_TOKEN=1234
+FROM_EMAIL="you@example.com"
+BUGS_TO="bugs@example.com"
+SECRET_KEY_BASE=`hexdump -n 64 -e '16/4 "%08x" 1 "\n"' /dev/random`
+DEVISE_SECRET_KEY=`hexdump -n 64 -e '16/4 "%08x" 1 "\n"' /dev/random`
+HOSTNAME=http://localhost
+SMTP_HOST=...
+SMTP_USERNAME=...
+SMTP_PASSWORD=...
+RAILS_ENV=production
+NODE_ENV=production
 ```
 
-Or view the server logs:
+Load them:
 
 ```sh
-docker logs -f matreon_web_1
-```
-
-### Docker Compose
-
-From the Matreon project directory:
-
-```sh
-export NETWORK=testnet # or "bitcoin" for mainnet
-export DATADIR=~/matreon-vol/bitcoin
-export LIGHTNING_CHARGE_API_TOKEN=1234
-export FROM_EMAIL="you@example.com"
-export BUGS_TO="bugs@example.com"
-export SECRET_KEY_BASE=`hexdump -n 64 -e '16/4 "%08x" 1 "\n"' /dev/random`
-export DEVISE_SECRET_KEY=`hexdump -n 64 -e '16/4 "%08x" 1 "\n"' /dev/random`
-export HOSTNAME=http://localhost
-export SMTP_HOST=...
-export SMTP_USERNAME=...
-export SMTP_PASSWORD=...
-docker-compose build
-docker-compose up -d
+set -a
+. .env
+set +a
 ```
 
 Migrate the database:
 
 ```sh
-docker-compose run web rake db:migrate
+bundle exec rake db:migrate
 ```
 
-Visit [localhost](http://localhost/).
+Start the server:
 
-To shut everything down
+```sh
+rake assets:precompile
+bundle exec puma -C config/puma.rb -p 3000
+```
 
-```
-docker-compose down
-```
+Visit [localhost](http://localhost:3000/).
+
+You may want to use Nginx as well, in which case leave out `-p 3000`.
 
 ### Cron jobs
 
@@ -153,7 +140,7 @@ Clone this repo and:
 
 ```sh
 heroku git:remote -a app-name
-heroku config:add HOSTNAME=app-name.herokuapp.com # Must be HTTPS
+heroku config:add HOSTNAME=https://app-name.herokuapp.com # Must be HTTPS
 heroku config:add LIGHTNING_CHARGE_URL=https://charge.example.com
 heroku config:add LIGHTNING_CHARGE_API_TOKEN=...
 heroku config:add FROM_EMAIL='"My Matreon" <you@example.com>'

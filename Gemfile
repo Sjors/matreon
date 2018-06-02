@@ -1,4 +1,4 @@
-ruby '2.5.1'
+ruby '2.4.2'
 source 'https://rubygems.org'
 
 git_source(:github) do |repo_name|
@@ -15,9 +15,6 @@ gem 'react_on_rails', '10.1.3'
 
 # Use Puma as the app server
 gem 'puma', '~> 3.11'
-
-# Proxy Lightning Charge:
-gem 'rack-proxy'
 
 gem 'secure_headers', '~> 6.0.0.alpha02'
 
@@ -43,6 +40,8 @@ gem 'sucker_punch', '~> 2.0'
 # Email when something breaks
 gem 'exception_notification'
 gem 'exception_notification-rake', '~> 0.3.0'
+
+gem 'bigdecimal'
 
 group :development, :test do
   # Use sqlite3 as the database for Active Record

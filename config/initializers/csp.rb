@@ -1,6 +1,6 @@
 SecureHeaders::Configuration.default do |config|
   if Rails.env.production?
-    connect_src = ["'self'", "wss://#{ ENV["HOSTNAME"] }"]
+    connect_src = ["'self'", "wss://#{ URI(ENV["HOSTNAME"]).host }"]
   else
     connect_src = %w('self' ws://localhost:3035 http://localhost:3035)
   end

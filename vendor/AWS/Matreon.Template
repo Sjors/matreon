@@ -135,12 +135,11 @@ Resources:
         configSets:
           full_install:
             - install_cfn
+            - add_users_and_groups
             - configure_system
-            - install_docker
             - install_bitcoind
             - install_lightningd
             - install_lightning_charge
-            - install_docker_compose_with_pg_and_rails
             - initial_blockchain_download
             - prepare_matreon
         install_cfn:
@@ -172,11 +171,36 @@ Resources:
                   - /etc/cfn/cfn-hup.conf
                   - /etc/cfn/hooks.d/cfn-auto-reloader.conf
         
+        add_users_and_groups:
+          commands:
+            01_matreon:
+              command: groupadd -r matreon && useradd -r -m -g matreon matreon
+        
         configure_system:
-
+          packages:
+            yum:
+              git: []
+              jq: []
+              patch: []
+              gcc: []
+              gcc-c++: []
+              automake: []
+              libtool: []
+              libxml2: []
+              libxml2-devel: []
+              libxslt: []
+              libxslt-devel: []
+          
+          users:
+            matreon:
+              homeDir: "/home/matreon"
+            
           files:
-            /matreon_data/.env:
+            /home/matreon/.env:
               content: !Sub |
+                RAILS_ENV=production
+                NODE_ENV=production
+                DATABASE_URL=postgres://matreon@localhost:5432
                 HOSTNAME=${HostName}
                 FROM_EMAIL=${FromEmail}
                 BUGS_TO=${BugsEmail}
@@ -189,14 +213,13 @@ Resources:
                 PODCAST_TITLE=${PodcastTitle}
                 PODCAST_URL=${PodcastUrl}
                 PODCAST_IMAGE=${PodcastImage}
-                DATADIR=/matreon_data
               mode: '000400'
+              owner: matreon
+              group: matreon
 
           commands:
             01_upgrade:
               command: yum update -y
-            02_basic_tools:
-              command: yum install git jq -y
             03_format_magnetic_volume:
               command: mkfs -t ext4 /dev/xvdb
             04_mount_magnetic_volume:
@@ -207,6 +230,8 @@ Resources:
               command: curl --silent --location https://rpm.nodesource.com/setup_8.x | bash -
             06_install_npm:
               command: yum -y install nodejs
+            07_install_yarn:
+              command: npm install -g yarn
             10_clone_repo:
               command: !Sub
                 git clone ${GitURL} /usr/local/src/matreon && cd /usr/local/src/matreon && git checkout ${GitBranch}
@@ -257,40 +282,38 @@ Resources:
               command: touch /home/charge/.env && chown charge:charge /home/charge/.env && chmod 600 /home/charge/.env
             62_add_charged_to_lightning_rpc_group:
               command:  usermod -a -G lightningrpc charge
-            70__install_postgress:
+            70_install_postgress:
               command: yum install -y https://download.postgresql.org/pub/repos/yum/10/redhat/rhel-7-x86_64/pgdg-redhat10-10-2.noarch.rpm
                        && sed -i "s/rhel-\$releasever-\$basearch/rhel-latest-x86_64/g" "/etc/yum.repos.d/pgdg-10-redhat.repo"
                        && yum install -y postgresql10-devel postgresql10-server
-            71_init_postgres:
+            71_configure_postgres:
               command: su - postgres --command "/usr/pgsql-10/bin/initdb -D /var/lib/pgsql/10/data"
                        && systemctl enable postgresql-10.service
-            74_start_postgres:
-              commadn: systemctl start postgresql-10.service
-            75_add_user_matreon:
-              command: groupadd -r matreon && useradd -r -m -g matreon matreon
+            72_start_postgres:
+              command: systemctl start postgresql-10.service
             76_create_db_for_matreon:
               command: su - postgres --command "createuser matreon && createdb -O matreon matreon"
-            
+            80_install_ruby:
+              command: amazon-linux-extras install ruby2.4 nginx1.12
+            81_install_bundler_and_gems_with_native_extensions:
+              command: yum install -y redhat-rpm-config ruby-devel
+                       && gem install bundler nokogiri pg --no-document -- --with-pg-config=/usr/pgsql-10/bin/pg_config
+            82_clone_repo_again:
+              command: !Sub
+                mkdir -p /var/www/matreon
+                && git clone ${GitURL} /var/www/matreon && cd /var/www/matreon && git checkout ${GitBranch}
+                && chown -R matreon:matreon /var/www/matreon
+            83_copy_nginx_conf:
+              command:    cp /usr/local/src/matreon/vendor/nginx/nginx.conf /etc/nginx/nginx.conf
+                       && cp /usr/local/src/matreon/vendor/nginx/matreon.conf /etc/nginx/conf.d
             90_set_secret_key_base:
-              command: echo "SECRET_KEY_BASE=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /matreon_data/.env
+              command: echo "SECRET_KEY_BASE=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /home/matreon/.env
             91_set_devise_secret_key_key:
-              command: echo "DEVISE_SECRET_KEY=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /matreon_data/.env
+              command: echo "DEVISE_SECRET_KEY=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /home/matreon/.env
             92_set_lightning_charge_api_token:
               command: export API_TOKEN=`hexdump -n 64 -e '16/4 "%08x" 1 "\n"' /dev/random`
-                       && echo "LIGHTNING_CHARGE_API_TOKEN=$API_TOKEN" >> /matreon_data/.env
+                       && echo "LIGHTNING_CHARGE_API_TOKEN=$API_TOKEN" >> /home/matreon/.env
                        && echo "API_TOKEN=$API_TOKEN" >> /home/charge/.env
-        
-        install_docker:
-          commands:
-            01_install_docker:
-              command: yum install -y docker
-            02_install_docker_compose:
-              command: curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-$(uname
-                -s)-$(uname -m) -o /usr/local/bin/docker-compose &&chmod +x /usr/local/bin/docker-compose
-                &&ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose &&chmod
-                +x /usr/bin/docker-compose
-            03_start_service:
-              command: service docker start
               
         install_bitcoind:
           commands:
@@ -300,7 +323,7 @@ Resources:
         install_lightningd:
           commands:
             01_yum_depends:
-              command: yum install autoconf automake libtool gmp-devel sqlite-devel python python3 net-tools -y
+              command: yum install gmp-devel sqlite-devel python python3 net-tools -y
             02_clone_repo:
               command: git clone https://github.com/ElementsProject/lightning /usr/local/src/lightning
             03_make:
@@ -318,13 +341,6 @@ Resources:
                        && su - charge --command  "cd lightning-charge && git checkout 2018/05/node-uri"
             03_npm_install:
               command:    su - charge --command "cd lightning-charge && npm link"
-
-        install_docker_compose_with_pg_and_rails:
-          commands:
-            01_make_db_dir:
-              command: mkdir /matreon_data/pg
-            03_build_rails_container:
-              command: cd /usr/local/src/matreon && docker-compose build
   
         initial_blockchain_download:
           commands:
@@ -351,24 +367,18 @@ Resources:
         prepare_matreon:
           commands:
             01_install_crontab:
-              command: "echo '0 * * * * root cd /usr/local/src/matreon && set -a &&\
-                \ source /matreon_data/.env && docker-compose run web rake invoices:process'\
-                \ >> /tmp/crontab \necho '0 * * * * root cd /usr/local/src/matreon\
-                \ && set -a && source /matreon_data/.env && docker-compose run web\
-                \ rake podcast:fetch' >> /tmp/crontab \necho '' >> /tmp/crontabcrontab\
-                \ /tmp/crontab"
+              command:
+                crontab -u matreon /usr/local/src/matreon/vendor/AWS/crontab-matreon
             02_start_bitcoind_service_after_reboot:
               command: systemctl enable bitcoind.service
             03_start_lightningd_service_after_reboot:
               command: systemctl enable lightningd.service
             04_start_lightning_charge_service_after_reboot:
               command: systemctl enable lightning-charge.service
-            10_start_docker_after_reboot:
-              command: systemctl enable docker
-            11_start_docker_compose_service_after_reboot:
-              command: systemctl enable docker-compose-matreon.service
-            20_run_db_migrate_after_reboot:
-              command: systemctl enable db-migrate.service
+            10_run_rails_service_after_reboot:
+              command: systemctl enable rails.service
+            11_run_ngnix_after_reboot:
+              command: systemctl enable nginx
             90_cleanup:
               command: rm -rf /tmp/*
             99_shutdown:

@@ -1,0 +1,2 @@
+0 * * * * set -a && source ~/.env && cd /var/www/matreon && /usr/local/bin/bundle exec rake invoices:process
+0 * * * * set -a && source ~/.env && cd /var/www/matreon && /usr/local/bin/bundle exec rake podcast:fetch

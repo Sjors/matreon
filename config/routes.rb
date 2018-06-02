@@ -18,10 +18,6 @@ Rails.application.routes.draw do
   get 'home', to: 'home#index'
 
   root to: 'home#index'
-  
-  # Map to localhost:9112 for Lightning Charge, if LIGHTNING_CHARGE_URL isn't set:
-  mount LightningChargeProxy.new => '/checkout'
-  mount LightningChargeProxy.new => '/static'
 
   # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
 end
