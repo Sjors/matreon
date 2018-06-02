@@ -29,38 +29,8 @@ Once it's stopped, click on the Actions button -> Instance Settings -> Change ns
 
 This [blog post](https://medium.com/provoost-on-crypto/bitcoin-core-lightning-rails-on-aws-ad3bd45b11e0) explains the steps in more detail.
 
-[INSTALL](/INSTALL.md) has instructions for Heroku and other platforms.
+[INSTALL.md](/INSTALL.md) has instructions for Heroku and other platforms.
 
 ## Development
 
-Pending a mock, you'll need to have access to a Lightning Charge installation.
-
-Install [RVM](https://rvm.io) (Ruby Version Manager) and `rvm install` the right [Ruby version](Gemfile#L1). Install [NVM](https://github.com/creationix/nvm#install-script) (Node Version Manager) and `nvm install` the right NodeJS version, see `{engines: {node: ...}}` in [package.json](package.json).
-
-Clone this repo and create a file `.env` with:
-
-```
-LIGHTNING_CHARGE_URL=...
-LIGHTNING_CHARGE_API_TOKEN=...
-FROM_EMAIL='"My Matreon" <you@example.com>'
-```
-
-Install dependencies, create database and start server:
-
-```sh
-gem install foreman
-bundle install --without production
-rake db:migrate
-foreman start -f Procfile.dev-server
-```
-
-Use Guard to automatically run tests each time you change something. To trigger
-a system notification on macOS:
-
-```sh
-brew install terminal-notifier
-``` 
-
-Install [React Developer Tools](https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi) and [Redux Developer Tools](https://chrome.google.com/webstore/detail/redux-devtools/lmhkpmbekcpmknklioeibfkpmmfibljd) for Chrome.
-
-To trigger invoice emails (delivered to `tmp/mails/[address]`), run: `rake invoices:process`
+See [DEVELOP.md](/DEVELOP.md). Pending a mock, you'll need to have access to a Lightning Charge installation.
