@@ -1,6 +1,11 @@
 [Unit]
 Description=Bitcoin daemon
-After=network.target
+
+ConditionPathExists=/home/bitcoin/.ibd_service_finished
+
+# StartLimitIntervalSec=10
+# StartLimitBurst=1
+# RestartSec=60
 
 [Service]
 ExecStart=/usr/local/bin/bitcoind -prune=38000 -dbcache=300 -daemon \
@@ -12,6 +17,10 @@ User=bitcoin
 Type=forking
 PIDFile=/run/bitcoind/bitcoind.pid
 Restart=on-failure
+
+StartLimitInterval=10
+StartLimitBurst=1
+RestartSec=60
 
 # Hardening measures
 ####################

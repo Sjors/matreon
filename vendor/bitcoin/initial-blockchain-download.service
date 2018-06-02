@@ -1,18 +1,24 @@
 [Unit]
-Description=Lightning charge
-Wants=lightningd.service
-After=lightningd.service
-ConditionPathExists=/home/bitcoin/.ibd_service_finished
+Description=Check if initial blockchain download has done and if we're on a special machine.
+After=network.target
+ConditionPathExists=!/home/bitcoin/.ibd_service_finished
+
+# Newer versions of systemd (>~ october 2017)
+# StartLimitIntervalSec=10
+# StartLimitBurst=1
+# RestartSec=60
 
 [Service]
-EnvironmentFile=/home/charge/.env
-ExecStart=/home/charge/.npm-global/bin/charged --ln-path /run/lightningd --db-path /home/charge/charge.db
+ExecStart=/usr/local/src/matreon/vendor/bitcoin/initial_blockchain_download_and_prune.sh  
 
-# Creates /run/charge owned by charge
-RuntimeDirectory=charge
-User=charge
+WorkingDirectory=/home/bitcoin
+User=bitcoin
 Type=simple
 Restart=on-failure
+
+StartLimitInterval=10
+StartLimitBurst=1
+RestartSec=60
 
 # Hardening measures
 ####################

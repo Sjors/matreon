@@ -241,7 +241,8 @@ Resources:
             20_add_user_bitcoin:
               command: groupadd -r bitcoin && useradd -r -m -g bitcoin bitcoin
             30_copy_systemd_files:
-              command: cp /usr/local/src/matreon/vendor/**/*.service /lib/systemd/system
+              command:    cp /usr/local/src/matreon/vendor/**/*.service /lib/systemd/system
+                       && cp /usr/local/src/matreon/vendor/**/*.path    /lib/systemd/system
             40_copy_bitcoind_files:
               command: mkdir /etc/bitcoin && cp /usr/local/src/matreon/vendor/bitcoin/bitcoin.conf /etc/bitcoin/bitcoin.conf 
                        && chmod 444 /etc/bitcoin/bitcoin.conf
@@ -353,39 +354,36 @@ Resources:
               command: mkdir /mnt/ssd && mount -o discard /dev/nvme0n1 /mnt/ssd
             04_add_ssd_bitcoin_dir:
               command: mkdir /mnt/ssd/bitcoin && chown -R bitcoin:bitcoin /mnt/ssd/bitcoin
-            05_start_bitcoind:
-              command: su - bitcoin --command "bitcoind -conf=/etc/bitcoin/bitcoin.conf -datadir=/mnt/ssd/bitcoin -dbcache=20000 -prune=1 -daemon"
-            06_wait_for_sync_prune_stop:
-              command: su - bitcoin --command "/usr/local/src/matreon/vendor/bitcoin/wait_for_ibd.sh"
-            07_copy_pruned_chain:
-              command: 
-                !If 
-                  - NetworkBitcoin
-                  -    su - bitcoin --command "mv /mnt/ssd/bitcoin/blocks/*.dat /home/bitcoin/.bitcoin/blocks"
-                    && su - bitcoin --command "mv /mnt/ssd/bitcoin/blocks/index/* /home/bitcoin/.bitcoin/blocks/index"
-                    && su - bitcoin --command "mv /mnt/ssd/bitcoin/chainstate /home/bitcoin/.bitcoin"
-                  -    su - bitcoin --command "mv /mnt/ssd/bitcoin/testnet3/blocks/*.dat /home/bitcoin/.bitcoin/testnet3/blocks"
-                    && su - bitcoin --command "mv /mnt/ssd/bitcoin/testnet3/blocks/index/* /home/bitcoin/.bitcoin/testnet3/blocks/index"
-                    && su - bitcoin --command "mv /mnt/ssd/bitcoin/testnet3/chainstate /home/bitcoin/.bitcoin/testnet3"
+                       && ln -s /mnt/ssd/bitcoin /home/bitcoin/big-disk && chown -h bitcoin:bitcoin /home/bitcoin/big-disk
         prepare_matreon:
           commands:
             01_install_crontab:
               command:
                 crontab -u matreon /usr/local/src/matreon/vendor/AWS/crontab-matreon
-            02_start_bitcoind_service_after_reboot:
-              command: systemctl enable bitcoind.service
-            03_start_lightningd_service_after_reboot:
-              command: systemctl enable lightningd.service
-            04_start_lightning_charge_service_after_reboot:
-              command: systemctl enable lightning-charge.service
-            10_run_rails_service_after_reboot:
-              command: systemctl enable rails.service
-            11_run_ngnix_after_reboot:
-              command: systemctl enable nginx
-            90_cleanup:
-              command: rm -rf /tmp/*
-            99_shutdown:
-              command: shutdown 2
+            02_prep_bitcoind_service:
+              command:    systemctl enable bitcoind.service
+                       && systemctl enable bitcoind.path
+                       && systemctl start bitcoind.path
+            03_start_ibd_and_prune_service:
+              command:    systemctl enable initial-blockchain-download.service
+                       && systemctl start initial-blockchain-download.service
+                       && systemctl enable ibd-shutdown.service
+                       && systemctl enable ibd-shutdown.path
+                       && systemctl start ibd-shutdown.path
+            04_prep__lightningd_service:
+              command:    systemctl enable lightningd.service
+                       && systemctl enable lightningd.path
+                       && systemctl start lightningd.path
+            05_prep__lightning_charge_service:
+              command:    systemctl enable lightning-charge.service
+                       && systemctl enable lightning-charge.path
+                       && systemctl start lightning-charge.path
+            10_run_rails_service:
+              command:     systemctl enable rails.service
+                        && systemctl start rails.service
+            11_run_nginx_service:
+              command:    systemctl enable nginx
+                       && systemctl start nginx
 
     Properties:
       ImageId: ami-43eec3a8
@@ -413,7 +411,7 @@ Resources:
           /opt/aws/bin/cfn-signal -e $?          --stack ${AWS::StackId}         --resource WebServer          --region ${AWS::Region}
     CreationPolicy:
       ResourceSignal:
-        Timeout: PT360M
+        Timeout: PT60M
   IPAddress:
     Type: AWS::EC2::EIP
   IPAssoc:

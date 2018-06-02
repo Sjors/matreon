@@ -33,6 +33,7 @@ First, create a new policy [here](https://console.aws.amazon.com/iam/home?region
     "ec2:describeAddresses",
     "ec2:releaseAddress",
     "ec2:associateAddress",
+    "ec2:disassociateAddress",
     "ec2:RunInstances",
     "ec2:StartInstances",
     "ec2:StopInstances",

@@ -1,0 +1,17 @@
+[Unit]
+Description=Shutdown after expedited IBD to allow downgrade
+After=network.target
+ConditionPathExists=/home/bitcoin/.ibd_service_requests_shutdown
+
+[Service]
+ExecStartPre=/usr/bin/rm /home/bitcoin/.ibd_service_requests_shutdown
+ExecStartPre=/bin/systemctl disable ibd-shutdown.service
+ExecStartPost=/usr/bin/rm /usr/lib/systemd/system/ibd-shutdown.service
+ExecStartPost=/usr/bin/rm /usr/lib/systemd/system/ibd-shutdown.path
+ExecStart=/sbin/shutdown
+
+User=root
+Type=oneshot
+
+[Install]
+WantedBy=multi-user.target

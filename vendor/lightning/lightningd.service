@@ -1,6 +1,8 @@
 [Unit]
 Description=Lightning daemon
 After=bitcoind.service
+Wants=bitcoind.service
+ConditionPathExists=/home/bitcoin/.ibd_service_finished
 
 [Service]
 ExecStart=/usr/local/bin/lightningd --daemon --pid-file=/run/lightningd/lightningd.pid --rpc-file=/run/lightningd/lightning-rpc
