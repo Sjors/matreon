@@ -72,19 +72,28 @@ Rails.application.configure do
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
   config.action_mailer.raise_delivery_errors = true
   config.action_mailer.default_url_options = { host:  URI(ENV['HOSTNAME']).host }
-  
+
+  if ENV['HEROKU']
     ActionMailer::Base.smtp_settings = {
-      :address        => ENV['SMTP_HOST'] || 'smtp.sendgrid.net',
-      :port           => ENV['SMTP_PORT'] || '587',
+      :address        => 'smtp.sendgrid.net',
+      :port           => '587',
       :authentication => :plain,
-      :user_name      => ENV['SMTP_USERNAME'] || ENV['SENDGRID_USERNAME'],
-      :password       => ENV['SMTP_PASSWORD'] || ENV['SENDGRID_PASSWORD'],
+      :user_name      => ENV['SENDGRID_USERNAME'],
+      :password       => ENV['SENDGRID_PASSWORD'],
       :enable_starttls_auto => true
     }
     
-    if ENV['SENDGRID_USERNAME']
-      ActionMailer::Base.smtp_settings[:domain] = 'heroku.com'
-    end
+    ActionMailer::Base.smtp_settings[:domain] = 'heroku.com'
+  else
+    ActionMailer::Base.smtp_settings = {
+      :address        => ENV['SMTP_HOST'],
+      :port           => ENV['SMTP_PORT'] || '587',
+      :authentication => :plain,
+      :user_name      => ENV['SMTP_USERNAME'],
+      :password       => ENV['SMTP_PASSWORD'],
+      :enable_starttls_auto => true
+    }
+  end
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).

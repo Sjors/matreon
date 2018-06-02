@@ -21,16 +21,21 @@ environment ENV.fetch("RAILS_ENV") { "development" }
 #
 workers ENV.fetch("WEB_CONCURRENCY") { 2 }
 
-# Set up socket location
-bind "unix:///var/www/matreon/tmp/puma.sock"
+if ENV['HEROKU']
+  # Specifies the `port` that Puma will listen on to receive requests; default is 3000.
+  port        ENV.fetch("PORT") { 3000 }
+else
+  # Set up socket location
+  bind "unix:///var/www/matreon/tmp/puma.sock"
 
-# Logging
-stdout_redirect "#{app_dir}/log/puma.stdout.log", "#{app_dir}/log/puma.stderr.log", true
+  # Logging
+  stdout_redirect "#{app_dir}/log/puma.stdout.log", "#{app_dir}/log/puma.stderr.log", true
 
-# Set master PID and state locations
-pidfile "/var/www/matreon/tmp/puma.pid"
-state_path "/var/www/matreon/tmp/puma.state"
-activate_control_app
+  # Set master PID and state locations
+  pidfile "/var/www/matreon/tmp/puma.pid"
+  state_path "/var/www/matreon/tmp/puma.state"
+  activate_control_app
+end
 
 # Use the `preload_app!` method when specifying a `workers` number.
 # This directive tells Puma to first boot the application and load code
@@ -56,7 +61,6 @@ end
 # or connections that may have been created at application boot, as Ruby
 # cannot share connections between processes.
 #
-
 on_worker_boot do
   ActiveRecord::Base.establish_connection if defined?(ActiveRecord)
 end

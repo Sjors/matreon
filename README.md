@@ -140,10 +140,11 @@ Clone this repo and:
 
 ```sh
 heroku git:remote -a app-name
-heroku config:add HOSTNAME=https://app-name.herokuapp.com # Must be HTTPS
-heroku config:add LIGHTNING_CHARGE_URL=https://charge.example.com
-heroku config:add LIGHTNING_CHARGE_API_TOKEN=...
-heroku config:add FROM_EMAIL='"My Matreon" <you@example.com>'
+heroku config:set HEROKU=true
+heroku config:set HOSTNAME=https://app-name.herokuapp.com # Must be HTTPS
+heroku config:set LIGHTNING_CHARGE_URL=https://charge.example.com
+heroku config:set LIGHTNING_CHARGE_API_TOKEN=...
+heroku config:set FROM_EMAIL='"My Matreon" <you@example.com>'
 heroku config:add BUGS_TO=bugs@example.com
 git push heroku
 heroku run db:migrate
@@ -176,6 +177,8 @@ heroku config:add PODCAST_URL=https://example.com/podcast.rss
 In Heroku click "Ad a new job", enter `rake podcast:fetch` and press `Save`. Suggested frequency is hourly.
 
 ## Development
+
+Pending a mock, you'll need to have access to a Lightning Charge installation.
 
 Install [RVM](https://rvm.io) (Ruby Version Manager) and `rvm install` the right [Ruby version](Gemfile#L1). Install [NVM](https://github.com/creationix/nvm#install-script) (Node Version Manager) and `nvm install` the right NodeJS version, see `{engines: {node: ...}}` in [package.json](package.json).
 
