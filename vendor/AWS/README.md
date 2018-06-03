@@ -103,9 +103,11 @@ To follow the provisioning process:
 tail -f /var/log/cfn-init-cmd.log
 ```
 
-At some point in the process the temporary IP is changed to a permanent one, so you'll have to $HOSTNAME.
+Once provisioning is complete, the temporary IP is changed to a permanent one.
+This may cause your SSH connection to freeze, and you'll need to update $HOSTNAME.
 
-Wait for the machine to finish initial blockchain download and shut itself down. Downgrade and restart:
+Wait for the machine to finish initial blockchain download and shut itself down.
+Downgrade and restart:
 
 ```sh
 aws ec2 stop-instances --instance-ids $INSTANCE_ID

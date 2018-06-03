@@ -138,13 +138,19 @@ Resources:
         configSets:
           full_install:
             - install_cfn
-            - add_users_and_groups
-            - configure_system
+            - users_groups
+            - env_files
+            - storage
+            - shared_packages_managers_languages
+            - clone_repo
             - install_bitcoind
+            - prepare_initial_blockchain_download
             - install_lightningd
             - install_lightning_charge
-            - initial_blockchain_download
-            - prepare_matreon
+            - install_postgres
+            - install_rails
+            - install_nginx
+            - prepare_cron_and_services
         install_cfn:
           files:
             /etc/cfn/cfn-hup.conf:
@@ -174,30 +180,20 @@ Resources:
                   - /etc/cfn/cfn-hup.conf
                   - /etc/cfn/hooks.d/cfn-auto-reloader.conf
         
-        add_users_and_groups:
+        users_groups:
           commands:
-            01_matreon:
+            01_bitcoin:
+              command: groupadd -r bitcoin && useradd -r -m -g bitcoin bitcoin
+            02_charge:
+              command: groupadd -r charge && useradd -r -m -g charge charge
+            03_matreon:
               command: groupadd -r matreon && useradd -r -m -g matreon matreon
+            10_lightningrpc_group:
+              command: groupadd lightningrpc 
+                       && usermod -a -G lightningrpc bitcoin
+                       && usermod -a -G lightningrpc charge
         
-        configure_system:
-          packages:
-            yum:
-              git: []
-              jq: []
-              patch: []
-              gcc: []
-              gcc-c++: []
-              automake: []
-              libtool: []
-              libxml2: []
-              libxml2-devel: []
-              libxslt: []
-              libxslt-devel: []
-          
-          users:
-            matreon:
-              homeDir: "/home/matreon"
-            
+        env_files:
           files:
             /home/matreon/.env:
               content: !Sub |
@@ -219,42 +215,84 @@ Resources:
               mode: '000400'
               owner: matreon
               group: matreon
-
+              
+            /home/charge/.env:
+              content: "\n"
+              mode: '000400'
+              owner: charge
+              group: charge
+              
           commands:
-            01_upgrade:
-              command: yum update -y
-            03_format_magnetic_volume:
+            20_generate_lightning_charge_api_token:
+              command: export API_TOKEN=`hexdump -n 64 -e '16/4 "%08x" 1 "\n"' /dev/random`
+                       && echo "LIGHTNING_CHARGE_API_TOKEN=$API_TOKEN" >> /home/matreon/.env
+                       && echo "API_TOKEN=$API_TOKEN" >> /home/charge/.env
+        
+        storage:
+          commands:
+            01_format_magnetic_volume:
               command: mkfs -t ext4 /dev/xvdb
-            04_mount_magnetic_volume:
+            02_mount_magnetic_volume:
               command: mkdir /mnt/magnetic
                       && echo "/dev/xvdb /mnt/magnetic ext4 defaults,nofail 0 2" >> /etc/fstab
                       && mount -a
-            05_add_npm_repo:
+            10_format_ssd:
+              command: mkfs.ext4 -E nodiscard /dev/nvme0n1
+            11_mount_ssd:
+              command: mkdir /mnt/ssd && mount -o discard /dev/nvme0n1 /mnt/ssd
+        
+        shared_packages_managers_languages:   
+          packages:
+            yum:
+              git: []
+              jq: []
+              patch: []
+              gcc: []
+              gcc-c++: []
+              automake: []
+              libtool: []
+              gmp-devel: []
+              sqlite-devel: []
+              python3: []
+              net-tools: []
+                   
+          commands:
+            01_upgrade:
+              command: yum update -y
+            10_add_npm_repo:
               command: curl --silent --location https://rpm.nodesource.com/setup_8.x | bash -
-            06_install_npm:
+            11_install_node:
               command: yum -y install nodejs
-            07_install_yarn:
+            12_install_yarn:
               command: npm install -g yarn
-            10_clone_repo:
+            20_install_ruby:
+              command: amazon-linux-extras install ruby2.4
+            21_install_bundler:
+              command: yum install -y redhat-rpm-config ruby-devel
+                       && gem install bundler --no-document
+                       
+        clone_repo:
+          commands:
+            01_clone_repo:
               command: !Sub
                 git clone ${GitURL} /usr/local/src/matreon && cd /usr/local/src/matreon && git checkout ${GitBranch}
-            20_add_user_bitcoin:
-              command: groupadd -r bitcoin && useradd -r -m -g bitcoin bitcoin
-            30_copy_systemd_files:
-              command:    cp /usr/local/src/matreon/vendor/**/*.service /lib/systemd/system
-                       && cp /usr/local/src/matreon/vendor/**/*.path    /lib/systemd/system
-            40_copy_bitcoind_files:
+              
+        install_bitcoind:
+          commands:
+            01_install:
+              command: sh /usr/local/src/matreon/vendor/bitcoin/install.sh
+            02_copy_bitcoind_config:
               command: mkdir /etc/bitcoin && cp /usr/local/src/matreon/vendor/bitcoin/bitcoin.conf /etc/bitcoin/bitcoin.conf 
                        && chmod 444 /etc/bitcoin/bitcoin.conf
-            41_set_bitcoin_network:
+            03_set_bitcoin_network:
               command: 
                 !If 
                   - NetworkBitcoin
                   - echo
                   - echo "testnet=1" >> /etc/bitcoin/bitcoin.conf
-            42_add_bitcoin_dir:
+            04_create_datadir:
               command: mkdir /home/bitcoin/.bitcoin && chown -R bitcoin:bitcoin /home/bitcoin/.bitcoin
-            43_add_blocks_dir:
+            05_create_blocks_dir:
               command: 
                 !If 
                   - NetworkBitcoin
@@ -266,74 +304,34 @@ Resources:
                     && mkdir /mnt/magnetic/blocks-testnet3 && chown -R bitcoin:bitcoin /mnt/magnetic/blocks-testnet3
                     && su - bitcoin --command "ln -s /home/bitcoin/.bitcoin/testnet3/blocks-index /mnt/magnetic/blocks-testnet3/index" 
                     && su - bitcoin --command "ln -s /mnt/magnetic/blocks-testnet3 /home/bitcoin/.bitcoin/testnet3/blocks"
-            50_copy_lightnind_files:
+
+        prepare_initial_blockchain_download:
+          commands:
+            01_add_ssd_bitcoin_dir:
+              command: mkdir /mnt/ssd/bitcoin && chown -R bitcoin:bitcoin /mnt/ssd/bitcoin
+                       && ln -s /mnt/ssd/bitcoin /home/bitcoin/big-disk && chown -h bitcoin:bitcoin /home/bitcoin/big-disk
+
+        install_lightningd:
+          commands:
+            01_clone_repo:
+              command: git clone https://github.com/ElementsProject/lightning /usr/local/src/lightning
+            02_make:
+              command: cd /usr/local/src/lightning && make && make install
+            10_create_datadir_and_copy_config:
               command: mkdir /home/bitcoin/.lightning && cp /usr/local/src/matreon/vendor/lightning/config /home/bitcoin/.lightning
-                       && chmod 444 /home/bitcoin/.lightning/config                        
-            51_set_lightning_network:
+                       && chown -R bitcoin:bitcoin /home/bitcoin/.lightning        
+            11_set_lightning_network:
               command:
                 !If 
                   - NetworkBitcoin
                   - echo "network=bitcoin" >> /home/bitcoin/.lightning/config
                   - echo "network=testnet" >> /home/bitcoin/.lightning/config
-            52_set_lightning_announce_addr:
+            12_set_lightning_announce_addr:
               command: !Sub 
-                echo "announce-addr=${IPAddress}" >> /home/bitcoin/.lightning/config
-            53_create_lightningrpc_group:
-              command: groupadd lightningrpc && sudo usermod -a -G lightningrpc bitcoin && mkdir /etc/lightning && chown bitcoin:lightningrpc /etc/lightning
-            60_add_user_charge:
-              command: groupadd -r charge && useradd -r -m -g charge charge
-            61_add_env_file:
-              command: touch /home/charge/.env && chown charge:charge /home/charge/.env && chmod 600 /home/charge/.env
-            62_add_charged_to_lightning_rpc_group:
-              command:  usermod -a -G lightningrpc charge
-            70_install_postgress:
-              command: yum install -y https://download.postgresql.org/pub/repos/yum/10/redhat/rhel-7-x86_64/pgdg-redhat10-10-2.noarch.rpm
-                       && sed -i "s/rhel-\$releasever-\$basearch/rhel-latest-x86_64/g" "/etc/yum.repos.d/pgdg-10-redhat.repo"
-                       && yum install -y postgresql10-devel postgresql10-server
-            71_configure_postgres:
-              command: su - postgres --command "/usr/pgsql-10/bin/initdb -D /var/lib/pgsql/10/data"
-                       && systemctl enable postgresql-10.service
-            72_start_postgres:
-              command: systemctl start postgresql-10.service
-            76_create_db_for_matreon:
-              command: su - postgres --command "createuser matreon && createdb -O matreon matreon"
-            80_install_ruby:
-              command: amazon-linux-extras install ruby2.4 nginx1.12
-            81_install_bundler_and_gems_with_native_extensions:
-              command: yum install -y redhat-rpm-config ruby-devel
-                       && gem install bundler nokogiri pg --no-document -- --with-pg-config=/usr/pgsql-10/bin/pg_config
-            82_clone_repo_again:
-              command: !Sub
-                mkdir -p /var/www/matreon
-                && git clone ${GitURL} /var/www/matreon && cd /var/www/matreon && git checkout ${GitBranch}
-                && chown -R matreon:matreon /var/www/matreon
-            83_copy_nginx_conf:
-              command:    cp /usr/local/src/matreon/vendor/www/nginx.conf /etc/nginx/nginx.conf
-                       && cp /usr/local/src/matreon/vendor/www/matreon.conf /etc/nginx/conf.d
-            90_set_secret_key_base:
-              command: echo "SECRET_KEY_BASE=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /home/matreon/.env
-            91_set_devise_secret_key_key:
-              command: echo "DEVISE_SECRET_KEY=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /home/matreon/.env
-            92_set_lightning_charge_api_token:
-              command: export API_TOKEN=`hexdump -n 64 -e '16/4 "%08x" 1 "\n"' /dev/random`
-                       && echo "LIGHTNING_CHARGE_API_TOKEN=$API_TOKEN" >> /home/matreon/.env
-                       && echo "API_TOKEN=$API_TOKEN" >> /home/charge/.env
-              
-        install_bitcoind:
-          commands:
-            01_install:
-              command: sh /usr/local/src/matreon/vendor/bitcoin/install.sh
-
-        install_lightningd:
-          commands:
-            01_yum_depends:
-              command: yum install gmp-devel sqlite-devel python python3 net-tools -y
-            02_clone_repo:
-              command: git clone https://github.com/ElementsProject/lightning /usr/local/src/lightning
-            03_make:
-              command: cd /usr/local/src/lightning && make && make install
-            04_fix_permissions:
-              command: chown -R bitcoin:bitcoin /home/bitcoin/.lightning
+                echo "announce-addr=${IPAddress}" >> /home/bitcoin/.lightning/config          
+            13_share_rpc:
+              command: mkdir /etc/lightning && chown bitcoin:lightningrpc /etc/lightning
+  
 
         install_lightning_charge:
           commands:
@@ -345,43 +343,82 @@ Resources:
                        && su - charge --command  "cd lightning-charge && git checkout 2018/05/node-uri"
             03_npm_install:
               command:    su - charge --command "cd lightning-charge && npm link"
-  
-        initial_blockchain_download:
+              
+        install_postgres:
           commands:
-            01_format_ssd:
-              command: mkfs.ext4 -E nodiscard /dev/nvme0n1
-            02_mount_ssd:
-              command: mkdir /mnt/ssd && mount -o discard /dev/nvme0n1 /mnt/ssd
-            04_add_ssd_bitcoin_dir:
-              command: mkdir /mnt/ssd/bitcoin && chown -R bitcoin:bitcoin /mnt/ssd/bitcoin
-                       && ln -s /mnt/ssd/bitcoin /home/bitcoin/big-disk && chown -h bitcoin:bitcoin /home/bitcoin/big-disk
-        prepare_matreon:
+            01_install_postgress:
+              command: yum install -y https://download.postgresql.org/pub/repos/yum/10/redhat/rhel-7-x86_64/pgdg-redhat10-10-2.noarch.rpm
+                       && sed -i "s/rhel-\$releasever-\$basearch/rhel-latest-x86_64/g" "/etc/yum.repos.d/pgdg-10-redhat.repo"
+                       && yum install -y postgresql10-devel postgresql10-server
+            02_configure_postgres:
+              command: su - postgres --command "/usr/pgsql-10/bin/initdb -D /var/lib/pgsql/10/data"
+                       && systemctl enable postgresql-10.service
+            03_start_postgres:
+              command: systemctl start postgresql-10.service
+            04_create_db_for_matreon:
+              command: su - postgres --command "createuser matreon && createdb -O matreon matreon"
+            05_ruby_gem:
+              command: gem install pg --no-document -- --with-pg-config=/usr/pgsql-10/bin/pg_config
+            
+        install_rails:
+          packages:
+            yum:
+              libxml2: []
+              libxml2-devel: []
+              libxslt: []
+              libxslt-devel: []
+
+          commands:
+            01_gems_with_native_extensions:
+              command: gem install nokogiri --no-document
+            10_clone_repo_again:
+              command: !Sub
+                mkdir -p /var/www/matreon
+                && git clone ${GitURL} /var/www/matreon && cd /var/www/matreon && git checkout ${GitBranch}
+                && chown -R matreon:matreon /var/www/matreon
+            21_set_secret_key_base:
+              command: echo "SECRET_KEY_BASE=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /home/matreon/.env
+            22_set_devise_secret_key_key:
+              command: echo "DEVISE_SECRET_KEY=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /home/matreon/.env
+
+        install_nginx:
+          commands:
+            01_install:
+              command: amazon-linux-extras install nginx1.12
+            02_copy_conf:
+              command:    cp /usr/local/src/matreon/vendor/www/nginx.conf /etc/nginx/nginx.conf
+                       && cp /usr/local/src/matreon/vendor/www/matreon.conf /etc/nginx/conf.d
+  
+        prepare_cron_and_services:
           commands:
             01_install_crontab:
               command:
                 crontab -u matreon /usr/local/src/matreon/vendor/AWS/crontab-matreon
-            02_prep_bitcoind_service:
+            10_copy_systemd_files:
+              command:    cp /usr/local/src/matreon/vendor/**/*.service /lib/systemd/system
+                       && cp /usr/local/src/matreon/vendor/**/*.path    /lib/systemd/system
+            11_prep_bitcoind_service:
               command:    systemctl enable bitcoind.service
                        && systemctl enable bitcoind.path
                        && systemctl start bitcoind.path
-            03_start_ibd_and_prune_service:
+            12_start_ibd_and_prune_service:
               command:    systemctl enable initial-blockchain-download.service
                        && systemctl start initial-blockchain-download.service
                        && systemctl enable ibd-shutdown.service
                        && systemctl enable ibd-shutdown.path
                        && systemctl start ibd-shutdown.path
-            04_prep__lightningd_service:
+            13_prep__lightningd_service:
               command:    systemctl enable lightningd.service
                        && systemctl enable lightningd.path
                        && systemctl start lightningd.path
-            05_prep__lightning_charge_service:
+            14_prep__lightning_charge_service:
               command:    systemctl enable lightning-charge.service
                        && systemctl enable lightning-charge.path
                        && systemctl start lightning-charge.path
-            10_run_rails_service:
+            15_run_rails_service:
               command:     systemctl enable rails.service
                         && systemctl start rails.service
-            11_run_nginx_service:
+            16_run_nginx_service:
               command:    systemctl enable nginx
                        && systemctl start nginx
 
