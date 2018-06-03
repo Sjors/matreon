@@ -1,0 +1,14 @@
+[Unit]
+Description=Wait for A-record and enables redirect
+After=network.target
+ConditionPathExists=/etc/nginx/conf.d/redirect_domain.conf.disabled
+
+[Service]
+EnvironmentFile=/root/.env
+ExecStart=/usr/local/src/matreon/vendor/AWS/redirect_domain.sh
+
+Type=simple
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

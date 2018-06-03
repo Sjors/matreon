@@ -1,0 +1,15 @@
+[Unit]
+Description=Harden, Diffie-Hellman Parameters, wait for A-Record, request and install first certificate.
+After=network.target
+ConditionPathExists=/etc/nginx/conf.d/https_upgrade.conf.disabled
+ConditionPathExists=!/home/cert/.failed
+
+[Service]
+EnvironmentFile=/root/.env
+ExecStart=/usr/local/src/matreon/vendor/certbot/first_certificate.sh
+
+Type=simple
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

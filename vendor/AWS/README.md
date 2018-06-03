@@ -1,3 +1,18 @@
+## Parameters
+
+### Domain
+
+If you change the domain later, update it in `/etc/nginx/conf.d/matreon.conf`, `/home/matreon/.env` and `/root/.env`.
+
+Then restart Nginx and Rails: 
+
+```
+systemctl restart nginx
+systemctl restart rails.service
+```
+
+Create new certificate if needed (TODO: explain steps).
+
 ## Deploy
 
 See [README](/README.md#deploy-to-aws) for a UI based deploy process.
@@ -74,7 +89,7 @@ export SMTP_PASSWORD=...
 export GIT_URL=https://github.com/Sjors/matreon.git
 export GIT_BRANCH=`git rev-parse --abbrev-ref HEAD` # don't forget to push if you're working on a branch
 
-aws cloudformation create-stack --template-body file:///$PWD/vendor/AWS/Matreon.Template --stack-name $STACK --parameters ParameterKey=Network,ParameterValue=$NETWORK ParameterKey=KeyName,ParameterValue=$KEY_NAME ParameterKey=HostName,ParameterValue=$HOSTNAME ParameterKey=FromEmail,ParameterValue=$FROM_EMAIL ParameterKey=BugsEmail,ParameterValue=$BUGS_TO ParameterKey=SmtpHost,ParameterValue=$SMTP_HOST ParameterKey=SmtpPort,ParameterValue=$SMTP_PORT ParameterKey=SmtpUser,ParameterValue=$SMTP_USERNAME ParameterKey=SmtpPassword,ParameterValue=$SMTP_PASSWORD ParameterKey=GitURL,ParameterValue=$GIT_URL ParameterKey=GitBranch,ParameterValue=$GIT_BRANCH
+aws cloudformation create-stack --template-body file:///$PWD/vendor/AWS/Matreon.Template --stack-name $STACK --parameters ParameterKey=Network,ParameterValue=$NETWORK ParameterKey=KeyName,ParameterValue=$KEY_NAME ParameterKey=Prefix,ParameterValue=$PREFIX ParameterKey=Domain,ParameterValue=$DOMAIN ParameterKey=FromEmail,ParameterValue=$FROM_EMAIL ParameterKey=BugsEmail,ParameterValue=$BUGS_TO ParameterKey=SmtpHost,ParameterValue=$SMTP_HOST ParameterKey=SmtpPort,ParameterValue=$SMTP_PORT ParameterKey=SmtpUser,ParameterValue=$SMTP_USERNAME ParameterKey=SmtpPassword,ParameterValue=$SMTP_PASSWORD ParameterKey=GitURL,ParameterValue=$GIT_URL ParameterKey=GitBranch,ParameterValue=$GIT_BRANCH
 ```
 
 You can follow the progress in the [management console](https://eu-central-1.console.aws.amazon.com/cloudformation/home?region=eu-central-1#/stacks) or:
@@ -101,6 +116,13 @@ To follow the provisioning process:
 
 ```sh
 tail -f /var/log/cfn-init-cmd.log
+```
+
+To monitor systemd services:
+
+```sh
+journalctl -xe -f
+journalctl -xe -f --unit first-certificate.service
 ```
 
 Once provisioning is complete, the temporary IP is changed to a permanent one.

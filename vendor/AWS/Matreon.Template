@@ -16,7 +16,8 @@ Metadata:
       - Label:
           default: Matreon
         Parameters:
-          - HostName
+          - Prefix
+          - Domain
           - FromEmail
           - SmtpHost
           - SmtpUser
@@ -47,15 +48,22 @@ Parameters:
     AllowedValues:
       - testnet
       - bitcoin
-  HostName:
-    Default: http://example.com
-    Description: Hostname, no trailing slash
+  Prefix:
+    Type: String
+    Description: For https:// we'll automatically request a certificate. You agree to the ACME server's Subscriber Agreement. 
+    Default: 'https'
+    AllowedValues:
+      - 'https'
+      - 'http'
+  Domain:
+    Default: example.com
+    Description: Domain without http(s), no trailing slash
     Type: String
     MinLength: '5'
     MaxLength: '100'
   FromEmail:
     Default: you@example.com
-    Description: From email address
+    Description: From email address. Also submitted during HTTPS certificate registration.
     Type: String
     MinLength: '5'
     MaxLength: '100'
@@ -130,9 +138,13 @@ Parameters:
 Conditions:
   NetworkBitcoin: !Equals [!Ref 'Network', 'bitcoin']
   NetworkTestnet: !Equals [!Ref 'Network', 'testnet']
+  UseDomain: !Not [!Equals [!Ref 'Domain', '']]
+  SSL: !Equals [!Ref 'Prefix', 'https']
+
 Resources:
   WebServer:
     Type: AWS::EC2::Instance
+    DependsOn: IPAddress
     Metadata:
       AWS::CloudFormation::Init:
         configSets:
@@ -150,6 +162,7 @@ Resources:
             - install_postgres
             - install_rails
             - install_nginx
+            - install_certbot
             - prepare_cron_and_services
         install_cfn:
           files:
@@ -188,6 +201,8 @@ Resources:
               command: groupadd -r charge && useradd -r -m -g charge charge
             03_matreon:
               command: groupadd -r matreon && useradd -r -m -g matreon matreon
+            04_certbot:
+              command: groupadd -r certbot && useradd -r -m -g certbot certbot
             10_lightningrpc_group:
               command: groupadd lightningrpc 
                        && usermod -a -G lightningrpc bitcoin
@@ -195,12 +210,18 @@ Resources:
         
         env_files:
           files:
+            /root/.env:
+              content: !Sub |
+                DOMAIN=${Domain}
+                IP=${IPAddress}
+                EMAIL=${FromEmail}
+                
             /home/matreon/.env:
               content: !Sub |
                 RAILS_ENV=production
                 NODE_ENV=production
                 DATABASE_URL=postgres://matreon@localhost:5432
-                HOSTNAME=${HostName}
+                HOSTNAME=${Prefix}://${Domain}
                 FROM_EMAIL=${FromEmail}
                 BUGS_TO=${BugsEmail}
                 SMTP_HOST=${SmtpHost}
@@ -382,12 +403,42 @@ Resources:
               command: echo "DEVISE_SECRET_KEY=`hexdump -n 64 -e '16/4 \"%08x\" 1 \"\n\"' /dev/random`" >> /home/matreon/.env
 
         install_nginx:
+          files:
+            /etc/nginx/conf.d/matreon/server_name:
+              content: 
+                !If 
+                  - UseDomain
+                  - !Sub |
+                      server_name ${Domain};
+                  - !Sub |
+                      server_name _;
+              
+            /etc/nginx/conf.d/redirect_domain.conf.disabled:
+              content: !Sub |
+                server {
+                  server_name *.amazonaws.com;
+                  listen 80;
+                  return 301 http://${Domain}$request_uri;
+                }
           commands:
             01_install:
               command: amazon-linux-extras install nginx1.12
             02_copy_conf:
               command:    cp /usr/local/src/matreon/vendor/www/nginx.conf /etc/nginx/nginx.conf
                        && cp /usr/local/src/matreon/vendor/www/matreon.conf /etc/nginx/conf.d
+                       && cp /usr/local/src/matreon/vendor/www/matreon/listen /etc/nginx/conf.d/matreon
+  
+        install_certbot:
+          commands:
+            01_add_EPEL7:
+              command: yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y
+            02_install:
+              command: yum install -y python2-certbot-nginx
+            03_copy_https_upgrade_conf:
+              command: cp /usr/local/src/matreon/vendor/www/https_upgrade.conf /etc/nginx/conf.d/https_upgrade.conf.disabled
+            04_add_cron_daily_at_random_time:
+              command: echo "`shuf -i 00-59 -n 1` `shuf -i 00-23 -n 1` * * * /usr/bin/certbot renew --quiet" >> /usr/local/src/matreon/vendor/AWS/crontab-matreon
+              
   
         prepare_cron_and_services:
           commands:
@@ -421,6 +472,18 @@ Resources:
             16_run_nginx_service:
               command:    systemctl enable nginx
                        && systemctl start nginx
+            17_run_redirect_domain_service:
+              command:
+                !If 
+                  - UseDomain
+                  - systemctl enable redirect-domain.service && systemctl start redirect-domain.service
+                  - echo
+            17_run_first_certificate_service:
+              command:
+                !If 
+                  - SSL
+                  - systemctl enable first-certificate.service && systemctl start first-certificate.service
+                  - echo
 
     Properties:
       ImageId: ami-43eec3a8
@@ -470,6 +533,10 @@ Resources:
           ToPort: '80'
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
           FromPort: 
             !If 
               - NetworkBitcoin
@@ -487,6 +554,9 @@ Resources:
           CidrIp: 0.0.0.0/0
 
 Outputs:
+  IP:
+    Value: !Sub '${WebServer.PublicIp}'
+    Description: IP address to use for DNS A-Record
   WebsiteURL:
     Value: !Sub 'http://${WebServer.PublicDnsName}/'
     Description: URL for your Matreon
