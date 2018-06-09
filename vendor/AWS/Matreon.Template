@@ -272,8 +272,6 @@ Resources:
               gcc-c++: []
               automake: []
               libtool: []
-              gmp-devel: []
-              sqlite-devel: []
               python3: []
               net-tools: []
                    
@@ -333,6 +331,11 @@ Resources:
                        && ln -s /mnt/ssd/bitcoin /home/bitcoin/big-disk && chown -h bitcoin:bitcoin /home/bitcoin/big-disk
 
         install_lightningd:
+          packages:
+            yum:
+              gmp-devel: []
+              sqlite-devel: []
+
           commands:
             01_clone_repo:
               command: git clone https://github.com/ElementsProject/lightning /usr/local/src/lightning

@@ -1,0 +1,11 @@
+[Unit]
+Description=eMMC boot script
+
+[Service]
+ExecStart=/usr/local/src/matreon/vendor/armbian/emmc-boot.sh
+
+User=root
+Type=oneshot
+
+[Install]
+WantedBy=multi-user.target
