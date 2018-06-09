@@ -11,12 +11,12 @@ Type=simple
 Restart=on-failure
 PIDFile=/var/www/matreon/tmp/puma.pid
 
-ExecStartPre=/usr/local/bin/bundle --without development:test
+ExecStartPre=/usr/local/bin/bundle --without development:test --path vendor/bundle
 ExecStartPre=/usr/local/bin/bundle exec rake db:migrate
 ExecStartPre=/usr/bin/yarn
 ExecStartPre=/usr/local/bin/bundle exec rake assets:precompile
 
-ExecStart=/usr/local/bin/bundle exec /home/matreon/bin/puma -C config/puma.rb
+ExecStart=/usr/local/bin/bundle exec puma -C config/puma.rb
 
 [Install]
 WantedBy=multi-user.target

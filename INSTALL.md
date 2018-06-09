@@ -58,9 +58,11 @@ heroku config:add PODCAST_URL=https://example.com/podcast.rss
 
 In Heroku click "Ad a new job", enter `rake podcast:fetch` and press `Save`. Suggested frequency is hourly.
 
-## Other
+## Armbian: Orange / Nano / etc Pi devices
 
-Coming soon, hopefully: Ubuntu on [Orange Pi](https://github.com/Sjors/matreon/issues/53) and [Nanopi](https://github.com/Sjors/matreon/issues/54).
+Instructions [here](/vendor/armbian).
+
+## Other
 
 In addition to the sections below, I suggest studying the [AWS template](/vendor/AWS/Matreon.Template) and the various scripts in [/vendor](/vendor).
 

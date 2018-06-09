@@ -29,7 +29,7 @@ Once it's stopped, click on the Actions button -> Instance Settings -> Change ns
 
 This [blog post](https://medium.com/provoost-on-crypto/bitcoin-core-lightning-rails-on-aws-ad3bd45b11e0) explains the steps in more detail.
 
-[INSTALL.md](/INSTALL.md) has instructions for Heroku and other platforms.
+[INSTALL.md](/INSTALL.md) has instructions for Orange / Nano / etc Pi micro boards, Heroku and other platforms.
 
 ## Development
 
