@@ -333,10 +333,17 @@ Resources:
                        && ln -s /mnt/ssd/bitcoin /home/bitcoin/big-disk && chown -h bitcoin:bitcoin /home/bitcoin/big-disk
 
         install_lightningd:
+          packages:
+            yum:
+              zlib-devel: []
           commands:
             01_clone_repo:
               command: git clone https://github.com/ElementsProject/lightning /usr/local/src/lightning
-            02_make:
+            02_checkout_release:
+              command: cd /usr/local/src/lightning && git checkout v0.6rc1
+            03_configure:
+              command: cd /usr/local/src/lightning && ./configure
+            04_make:
               command: cd /usr/local/src/lightning && make && make install
             10_create_datadir_and_copy_config:
               command: mkdir /home/bitcoin/.lightning && cp /usr/local/src/matreon/vendor/lightning/config /home/bitcoin/.lightning
