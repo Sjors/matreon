@@ -8,6 +8,7 @@ do
   if dig $DOMAIN | grep $IP; then
     if /bin/certbot --nginx -m $EMAIL --agree-tos -n --domains $DOMAIN; then
       mv /etc/nginx/conf.d/https_upgrade.conf.disabled /etc/nginx/conf.d/https_upgrade.conf
+      cp /usr/local/src/matreon/vendor/www/matreon/proxy /etc/nginx/conf.d/matreon
       >/etc/nginx/conf.d/matreon/listen
       systemctl restart nginx
       exit 0

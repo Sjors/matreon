@@ -1,0 +1,2 @@
+# Added by first-certificate.service once HTTPS is enabled:
+proxy_set_header X-Forwarded-Proto https;
