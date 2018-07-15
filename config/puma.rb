@@ -26,14 +26,14 @@ if ENV['HEROKU']
   port        ENV.fetch("PORT") { 3000 }
 else
   # Set up socket location
-  bind "unix:///var/www/matreon/tmp/puma.sock"
+  bind "unix://#{app_dir}/tmp/puma.sock"
 
   # Logging
   stdout_redirect "#{app_dir}/log/puma.stdout.log", "#{app_dir}/log/puma.stderr.log", true
 
   # Set master PID and state locations
-  pidfile "/var/www/matreon/tmp/puma.pid"
-  state_path "/var/www/matreon/tmp/puma.state"
+  pidfile "#{app_dir}/tmp/puma.pid"
+  state_path "#{app_dir}/tmp/puma.state"
   activate_control_app
 end
 
