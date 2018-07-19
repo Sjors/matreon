@@ -88,6 +88,8 @@ GEM
       exception_notification (~> 4.2.0)
       rake (>= 0.9.0)
     execjs (2.7.0)
+    factory_bot (4.10.0)
+      activesupport (>= 3.0.0)
     ffi (1.9.25)
     ffi (1.9.25-java)
     ffi (1.9.25-x64-mingw32)
@@ -341,6 +343,7 @@ DEPENDENCIES
   dotenv
   exception_notification
   exception_notification-rake (~> 0.3.0)
+  factory_bot
   guard
   guard-rspec
   jbuilder (~> 2.5)
