@@ -2,7 +2,7 @@ require 'net/http'
 require 'uri'
 require 'json'
 
-class LightningChargeService
+class LightningChargeInvoice
   attr_reader :id, :status
 
   def initialize(id = nil)

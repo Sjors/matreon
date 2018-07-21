@@ -19,7 +19,7 @@ class Invoice < ApplicationRecord
     return false if !charge_invoice_id
     return false if status != "unpaid"
 
-    lightning_charge_invoice = LightningChargeService.find(charge_invoice_id)
+    lightning_charge_invoice = LightningChargeInvoice.find(charge_invoice_id)
 
     self.update!({
       status: lightning_charge_invoice.status,
@@ -50,7 +50,7 @@ class Invoice < ApplicationRecord
   private
 
   def create_lightning_charge_invoice
-    lightning_charge_invoice = LightningChargeService.create(amount)
+    lightning_charge_invoice = LightningChargeInvoice.create(amount)
 
     self.charge_invoice_id = lightning_charge_invoice.id
     self.status = lightning_charge_invoice.status
