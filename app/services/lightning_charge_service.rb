@@ -3,15 +3,61 @@ require 'uri'
 require 'json'
 
 class LightningChargeService
-  def self.invoice_uri(lightning_charge_id=nil)
-    if lightning_charge_id.nil?
-      return URI.parse("#{ ENV["LIGHTNING_CHARGE_URL"] || "http://localhost:9112" }/invoice")
+  attr_reader :id, :status
+
+  def initialize(id = nil)
+    @id = id
+  end
+
+  def self.find(id)
+    instance = new(id)
+    instance.fetch_info
+
+    instance
+  end
+
+  def self.create(amount)
+    instance = new
+    instance.create(amount)
+
+    instance
+  end
+
+  def fetch_info
+    request = http_request("GET", invoice_uri)
+    info = request_and_parse(request)
+
+    @status = info['status']
+  end
+
+  def create(amount)
+    request = http_request('POST', invoice_uri)
+    request.set_form_data({
+      msatoshi: amount * 1000,
+      description: "Matreon",
+      expiry: 60 * 60 * 24 * 7 # 1 week, TODO: add invoices.expires_at
+    })
+    info = request_and_parse(request)
+
+    @status = info['status']
+    @id = info['id']
+  end
+
+  private
+
+  def lightning_charge_host
+    ENV["LIGHTNING_CHARGE_URL"] || "http://localhost:9112"
+  end
+
+  def invoice_uri
+    if id.nil?
+      URI.parse("#{lightning_charge_host}/invoice")
     else
-      return URI.parse("#{ ENV["LIGHTNING_CHARGE_URL"] || "http://localhost:9112" }/invoice/#{ lightning_charge_id }")
+      URI.parse("#{lightning_charge_host}/invoice/#{id}")
     end
   end
 
-  def self.http_request(method, uri)
+  def http_request(method, uri)
     if method == "GET"
       request = Net::HTTP::Get.new(uri.request_uri)
     elsif method == "POST"
@@ -22,19 +68,19 @@ class LightningChargeService
 
     request.basic_auth("api-token", ENV["LIGHTNING_CHARGE_API_TOKEN"])
 
-    return request
+    request
   end
 
-  def self.request_and_parse(request, uri)
-    http = Net::HTTP.new(uri.host, uri.port)
+  def request_and_parse(request)
+    http = Net::HTTP.new(invoice_uri.host, invoice_uri.port)
     response = http.request(request)
 
-    if !["200", "201"].include? (response.code)
+    unless ["200", "201"].include?(response.code)
       puts response.code
       puts response.body
       throw "Failed to make request to lightning charge"
     else
-      return JSON.parse(response.body)
+      JSON.parse(response.body)
     end
   end
 end

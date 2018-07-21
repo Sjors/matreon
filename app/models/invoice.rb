@@ -19,13 +19,14 @@ class Invoice < ApplicationRecord
     return false if !charge_invoice_id
     return false if status != "unpaid"
 
-    uri = LightningChargeService.invoice_uri(charge_invoice_id)
-    request = LightningChargeService.http_request("GET", uri)
+    lightning_charge_invoice = LightningChargeService.find(charge_invoice_id)
 
-    invoice = LightningChargeService.request_and_parse(request, uri)
+    self.update!({
+      status: lightning_charge_invoice.status,
+      polled_at: Time.current,
+      paid_at: lightning_charge_invoice.status == 'paid' ? Time.current : nil
+    })
 
-    self.update status: invoice["status"], polled_at: Time.current, paid_at: invoice["status"] == "paid" ? Time.current : nil
-    
     return true
   end
 
@@ -49,20 +50,10 @@ class Invoice < ApplicationRecord
   private
 
   def create_lightning_charge_invoice
-    uri = LightningChargeService.invoice_uri()
+    lightning_charge_invoice = LightningChargeService.create(amount)
 
-    request = LightningChargeService.http_request("POST", uri)
-
-    request.set_form_data({
-      msatoshi: amount * 1000,
-      description: "Matreon",
-      expiry: 60 * 60 * 24 * 7 # 1 week, TODO: add invoices.expires_at
-    })
-
-    generated_invoice = LightningChargeService.request_and_parse(request, uri)
-
-    self.charge_invoice_id = generated_invoice["id"]
-    self.status = generated_invoice["status"]
+    self.charge_invoice_id = lightning_charge_invoice.id
+    self.status = lightning_charge_invoice.status
     self.polled_at = Time.current
   end
 
