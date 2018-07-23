@@ -2,6 +2,8 @@ require 'rails_helper'
 
 RSpec.describe Podcast, type: :model do
   describe "self.fetch!" do
+    let!(:podcast) { create(:podcast, guid: "1", external: true) }
+
     before do
       rss_fixture = File.read(File.new(Rails.root.join("spec/fixtures/files/podcast.rss")))
       allow_any_instance_of(Kernel).to receive(:open).and_return(OpenStruct.new(read: rss_fixture))                 
