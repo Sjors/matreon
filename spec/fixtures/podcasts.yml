@@ -1,7 +1,0 @@
-ep1:
-  guid: "1"
-  title: "Episode 1"
-  description: "Long rant"
-  url: "https://example.com/podcast/1.mp3"
-  pub_date: "2018-01-01"
-  external: true
