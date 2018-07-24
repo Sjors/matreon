@@ -64,7 +64,7 @@ class Invoice < ApplicationRecord
   end
 
   def self.poll_unpaid!
-    Invoice.where(paid_at: nil, status: 'unpaid').each do |invoice|
+    Invoice.where(paid_at: nil, status: 'unpaid').where.not(user: nil).each do |invoice|
       invoice.poll!
     end
   end
