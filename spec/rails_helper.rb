@@ -9,6 +9,8 @@ ENV['FROM_EMAIL'] ||= 'test@matreon.zz'
 ENV['PODCAST'] ||= '1'
 ENV['PODCAST_URL'] ||= 'https://example.com/podcast.rss'
 ENV['PODCAST_TITLE'] ||= 'Sjorsnado Podcast'
+ENV['LIGHTNING_CHARGE_URL'] ||= 'http://localhost:9112'
+ENV['LIGHTNING_CHARGE_API_TOKEN'] ||= 'secret'
 
 require File.expand_path('../../config/environment', __FILE__)
 

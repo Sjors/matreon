@@ -1,0 +1,79 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: "<LIGHTNING_CHARGE_URL>/invoice"
+    body:
+      encoding: US-ASCII
+      string: msatoshi=100000&description=Matreon&expiry=604800
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Authorization:
+      - "<LIGHTNING_CHARGE_BASIC_AUTH>"
+      Content-Type:
+      - application/x-www-form-urlencoded
+  response:
+    status:
+      code: 201
+      message: Created
+    headers:
+      X-Powered-By:
+      - Express
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '448'
+      Etag:
+      - W/"1c0-PghtG5hGlBdwQ9UobRodDjjp5HM"
+      Date:
+      - Sun, 29 Jul 2018 21:06:50 GMT
+      Connection:
+      - keep-alive
+    body:
+      encoding: UTF-8
+      string: '{"id":"BCY_OtG1OGZZWlTubiQ0D","msatoshi":"100000","description":"Matreon","rhash":"453dff5ff780e011e829ed7ded365a092e415f2dec0a570c2f3f82ab28826547","payreq":"lntb1u1pd4utr2pp5g57l7hlhsrspr6pfa4776dj6pyhyzhedas99wrp087p2k2yzv4rsdqvf4shgun9dahqxqyjw5qcqp2thj7wnypltq0r3fkf3f660vcvwrn49nsldrg29mn0fr0jv2hcsc85my6uxhdzldq3ppw4vtntjxsntarxxc6cxs9dp4w34mc7fhp4ugqyfk3em","expires_at":1533503210,"created_at":1532898410,"metadata":null,"status":"unpaid"}'
+    http_version: 
+  recorded_at: Sun, 29 Jul 2018 21:06:50 GMT
+- request:
+    method: get
+    uri: "<LIGHTNING_CHARGE_URL>/invoice/BCY_OtG1OGZZWlTubiQ0D"
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Authorization:
+      - "<LIGHTNING_CHARGE_BASIC_AUTH>"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      X-Powered-By:
+      - Express
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '549'
+      Etag:
+      - W/"225-p9pe70Jl3ZXdv0RwqWAnkOMb/tk"
+      Date:
+      - Sun, 29 Jul 2018 21:07:09 GMT
+      Connection:
+      - keep-alive
+    body:
+      encoding: UTF-8
+      string: '{"id":"BCY_OtG1OGZZWlTubiQ0D","msatoshi":"100000","quoted_currency":null,"quoted_amount":null,"rhash":"453dff5ff780e011e829ed7ded365a092e415f2dec0a570c2f3f82ab28826547","payreq":"lntb1u1pd4utr2pp5g57l7hlhsrspr6pfa4776dj6pyhyzhedas99wrp087p2k2yzv4rsdqvf4shgun9dahqxqyjw5qcqp2thj7wnypltq0r3fkf3f660vcvwrn49nsldrg29mn0fr0jv2hcsc85my6uxhdzldq3ppw4vtntjxsntarxxc6cxs9dp4w34mc7fhp4ugqyfk3em","pay_index":null,"description":"Matreon","metadata":null,"created_at":1532898410,"expires_at":1533503210,"paid_at":null,"msatoshi_received":null,"status":"unpaid"}'
+    http_version: 
+  recorded_at: Sun, 29 Jul 2018 21:07:09 GMT
+recorded_with: VCR 4.0.0
