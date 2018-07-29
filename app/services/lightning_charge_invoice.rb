@@ -39,6 +39,10 @@ class LightningChargeInvoice
   private
 
   def client
-    LightningChargeClient.new
+    self.class.client_klass.new
+  end
+
+  def self.client_klass
+    Rails.env.test? ? LightningChargeMockClient : LightningChargeClient
   end
 end
