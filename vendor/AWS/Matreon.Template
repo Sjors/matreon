@@ -50,7 +50,7 @@ Parameters:
       - bitcoin
   Prefix:
     Type: String
-    Description: For https:// we'll automatically request a certificate. You agree to the ACME server's Subscriber Agreement. 
+    Description: For https:// we'll automatically request a certificate. You agree to the ACME server's Subscriber Agreement.
     Default: 'https'
     AllowedValues:
       - 'https'
@@ -192,7 +192,7 @@ Resources:
                 files:
                   - /etc/cfn/cfn-hup.conf
                   - /etc/cfn/hooks.d/cfn-auto-reloader.conf
-        
+
         users_groups:
           commands:
             01_bitcoin:
@@ -204,10 +204,10 @@ Resources:
             04_certbot:
               command: groupadd -r certbot && useradd -r -m -g certbot certbot
             10_lightningrpc_group:
-              command: groupadd lightningrpc 
+              command: groupadd lightningrpc
                        && usermod -a -G lightningrpc bitcoin
                        && usermod -a -G lightningrpc charge
-        
+
         env_files:
           files:
             /root/.env:
@@ -215,7 +215,7 @@ Resources:
                 DOMAIN=${Domain}
                 IP=${IPAddress}
                 EMAIL=${FromEmail}
-                
+
             /home/matreon/.env:
               content: !Sub |
                 RAILS_ENV=production
@@ -228,7 +228,7 @@ Resources:
                 SMTP_PORT=${SmtpPort}
                 SMTP_USERNAME=${SmtpUser}
                 SMTP_PASSWORD=${SmtpPassword}
-                
+
                 PODCAST=${Podcast}
                 PODCAST_TITLE=${PodcastTitle}
                 PODCAST_URL=${PodcastUrl}
@@ -236,19 +236,19 @@ Resources:
               mode: '000400'
               owner: matreon
               group: matreon
-              
+
             /home/charge/.env:
               content: "\n"
               mode: '000400'
               owner: charge
               group: charge
-              
+
           commands:
             20_generate_lightning_charge_api_token:
               command: export API_TOKEN=`hexdump -n 64 -e '16/4 "%08x" 1 "\n"' /dev/random`
                        && echo "LIGHTNING_CHARGE_API_TOKEN=$API_TOKEN" >> /home/matreon/.env
                        && echo "API_TOKEN=$API_TOKEN" >> /home/charge/.env
-        
+
         storage:
           commands:
             01_format_magnetic_volume:
@@ -261,8 +261,8 @@ Resources:
               command: mkfs.ext4 -E nodiscard /dev/nvme0n1
             11_mount_ssd:
               command: mkdir /mnt/ssd && mount -o discard /dev/nvme0n1 /mnt/ssd
-        
-        shared_packages_managers_languages:   
+
+        shared_packages_managers_languages:
           packages:
             yum:
               git: []
@@ -276,7 +276,7 @@ Resources:
               sqlite-devel: []
               python3: []
               net-tools: []
-                   
+
           commands:
             01_upgrade:
               command: yum update -y
@@ -291,39 +291,39 @@ Resources:
             21_install_bundler:
               command: yum install -y redhat-rpm-config ruby-devel
                        && gem install bundler --no-document
-                       
+
         clone_repo:
           commands:
             01_clone_repo:
               command: !Sub
                 git clone ${GitURL} /usr/local/src/matreon && cd /usr/local/src/matreon && git checkout ${GitBranch}
-              
+
         install_bitcoind:
           commands:
             01_install:
               command: sh /usr/local/src/matreon/vendor/bitcoin/install.sh
             02_copy_bitcoind_config:
-              command: mkdir /etc/bitcoin && cp /usr/local/src/matreon/vendor/bitcoin/bitcoin.conf /etc/bitcoin/bitcoin.conf 
+              command: mkdir /etc/bitcoin && cp /usr/local/src/matreon/vendor/bitcoin/bitcoin.conf /etc/bitcoin/bitcoin.conf
                        && chmod 444 /etc/bitcoin/bitcoin.conf
             03_set_bitcoin_network:
-              command: 
-                !If 
+              command:
+                !If
                   - NetworkBitcoin
                   - echo
                   - echo "testnet=1" >> /etc/bitcoin/bitcoin.conf
             04_create_datadir:
               command: mkdir /home/bitcoin/.bitcoin && chown -R bitcoin:bitcoin /home/bitcoin/.bitcoin
             05_create_blocks_dir:
-              command: 
-                !If 
+              command:
+                !If
                   - NetworkBitcoin
                   - su - bitcoin --command "mkdir -p ~/.bitcoin/blocks-index"
                     && mkdir /mnt/magnetic/blocks && chown -R bitcoin:bitcoin /mnt/magnetic/blocks
-                    && su - bitcoin --command "ln -s /home/bitcoin/.bitcoin/blocks-index /mnt/magnetic/blocks/index" 
+                    && su - bitcoin --command "ln -s /home/bitcoin/.bitcoin/blocks-index /mnt/magnetic/blocks/index"
                     && su - bitcoin --command "ln -s /mnt/magnetic/blocks /home/bitcoin/.bitcoin/blocks"
                   - su - bitcoin --command "mkdir -p ~/.bitcoin/testnet3/blocks-index"
                     && mkdir /mnt/magnetic/blocks-testnet3 && chown -R bitcoin:bitcoin /mnt/magnetic/blocks-testnet3
-                    && su - bitcoin --command "ln -s /home/bitcoin/.bitcoin/testnet3/blocks-index /mnt/magnetic/blocks-testnet3/index" 
+                    && su - bitcoin --command "ln -s /home/bitcoin/.bitcoin/testnet3/blocks-index /mnt/magnetic/blocks-testnet3/index"
                     && su - bitcoin --command "ln -s /mnt/magnetic/blocks-testnet3 /home/bitcoin/.bitcoin/testnet3/blocks"
 
         prepare_initial_blockchain_download:
@@ -347,19 +347,19 @@ Resources:
               command: cd /usr/local/src/lightning && make && make install
             10_create_datadir_and_copy_config:
               command: mkdir /home/bitcoin/.lightning && cp /usr/local/src/matreon/vendor/lightning/config /home/bitcoin/.lightning
-                       && chown -R bitcoin:bitcoin /home/bitcoin/.lightning        
+                       && chown -R bitcoin:bitcoin /home/bitcoin/.lightning
             11_set_lightning_network:
               command:
-                !If 
+                !If
                   - NetworkBitcoin
                   - echo "network=bitcoin" >> /home/bitcoin/.lightning/config
                   - echo "network=testnet" >> /home/bitcoin/.lightning/config
             12_set_lightning_announce_addr:
-              command: !Sub 
-                echo "announce-addr=${IPAddress}" >> /home/bitcoin/.lightning/config          
+              command: !Sub
+                echo "announce-addr=${IPAddress}" >> /home/bitcoin/.lightning/config
             13_share_rpc:
               command: mkdir /etc/lightning && chown bitcoin:lightningrpc /etc/lightning
-  
+
 
         install_lightning_charge:
           commands:
@@ -371,7 +371,7 @@ Resources:
                        && su - charge --command  "cd lightning-charge && git checkout 2018/05/node-uri"
             03_npm_install:
               command:    su - charge --command "cd lightning-charge && npm link"
-              
+
         install_postgres:
           commands:
             01_install_postgress:
@@ -387,7 +387,7 @@ Resources:
               command: su - postgres --command "createuser matreon && createdb -O matreon matreon"
             05_ruby_gem:
               command: gem install pg --no-document -- --with-pg-config=/usr/pgsql-10/bin/pg_config
-            
+
         install_rails:
           packages:
             yum:
@@ -412,14 +412,14 @@ Resources:
         install_nginx:
           files:
             /etc/nginx/conf.d/matreon/server_name:
-              content: 
-                !If 
+              content:
+                !If
                   - UseDomain
                   - !Sub |
                       server_name ${Domain};
                   - !Sub |
                       server_name _;
-              
+
             /etc/nginx/conf.d/redirect_domain.conf.disabled:
               content: !Sub |
                 server {
@@ -434,7 +434,7 @@ Resources:
               command:    cp /usr/local/src/matreon/vendor/www/nginx.conf /etc/nginx/nginx.conf
                        && cp /usr/local/src/matreon/vendor/www/matreon.conf /etc/nginx/conf.d
                        && cp /usr/local/src/matreon/vendor/www/matreon/listen /etc/nginx/conf.d/matreon
-  
+
         install_certbot:
           commands:
             01_add_EPEL7:
@@ -445,8 +445,8 @@ Resources:
               command: cp /usr/local/src/matreon/vendor/www/https_upgrade.conf /etc/nginx/conf.d/https_upgrade.conf.disabled
             04_add_cron_daily_at_random_time:
               command: echo "`shuf -i 00-59 -n 1` `shuf -i 00-23 -n 1` * * * /usr/bin/certbot renew --quiet" >> /usr/local/src/matreon/vendor/AWS/crontab-matreon
-              
-  
+
+
         prepare_cron_and_services:
           commands:
             01_install_crontab:
@@ -481,13 +481,13 @@ Resources:
                        && systemctl start nginx
             17_run_redirect_domain_service:
               command:
-                !If 
+                !If
                   - UseDomain
                   - systemctl enable redirect-domain.service && systemctl start redirect-domain.service
                   - echo
             17_run_first_certificate_service:
               command:
-                !If 
+                !If
                   - SSL
                   - systemctl enable first-certificate.service && systemctl start first-certificate.service
                   - echo
@@ -544,13 +544,13 @@ Resources:
           ToPort: '443'
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          FromPort: 
-            !If 
+          FromPort:
+            !If
               - NetworkBitcoin
               - '8883'
               - '18883'
-          ToPort: 
-            !If 
+          ToPort:
+            !If
               - NetworkBitcoin
               - '8883'
               - '18883'
