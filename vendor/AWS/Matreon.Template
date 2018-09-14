@@ -340,7 +340,7 @@ Resources:
             01_clone_repo:
               command: git clone https://github.com/ElementsProject/lightning /usr/local/src/lightning
             02_checkout_release:
-              command: cd /usr/local/src/lightning && git checkout v0.6rc1
+              command: cd /usr/local/src/lightning && git checkout v0.6.1
             03_configure:
               command: cd /usr/local/src/lightning && ./configure
             04_make:
